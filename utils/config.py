@@ -57,7 +57,7 @@ rawdoc_mat_dir/query_idf/desc_term_idf/1.npy
 rawdoc_mat_dir/query_idf/topic_term_idf/1.npy
 '''
 # the directory helds the similarity matrices 
-sim_dir="/local/var/tmp/%s" % getpass.getuser()
+sim_dir="/home/amir/playground/copacrr"
 rawdoc_mat_dir=os.path.join(sim_dir, 'cosine')
 #"/directory to the pre-computed similarity matrices/"
 # the mat for the context needs to be pre-computed if context=True

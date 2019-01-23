@@ -5,8 +5,8 @@ source $CUR_DIR/set_env.sh
 START=$(date +%s.%N)
 
 expname=pacrrpub
-train_years=wt12_13
-test_year=wt11
+#train_years=wt09_10_11_12
+#test_year=wt13_14
 numneg=6
 batch=32
 winlen=3
@@ -19,7 +19,7 @@ combine=16
 qproximity=0
 iterations=10
 shuffle=False
-parentdir=/local/var/$USER/pacrr
+parentdir=~/playground/copacrr/out
 outdir=$parentdir
 
 
