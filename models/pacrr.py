@@ -11,7 +11,7 @@ from utils.ngram_nfilter import get_ngram_nfilter
 class PACRR(MODEL_BASE):
     
     params = MODEL_BASE.common_params + ['distill', 'winlen', 'nfilter', 'kmaxpool', 'combine',
-                                         'qproximity', 'context', 'shuffle', 'xfilters', 'cascade', 'nom_feat']
+                                         'qproximity', 'context', 'shuffle', 'xfilters', 'cascade', 'nomfeat']
 
     def __init__(self, *args, **kwargs):
         super(PACRR, self).__init__(*args, **kwargs)
@@ -64,6 +64,9 @@ class PACRR(MODEL_BASE):
         re_input, cov_sim_layers, pool_sdim_layer, pool_sdim_layer_context, pool_filter_layer, ex_filter_layer, re_lq_ds =\
         self._cov_dsim_layers(p['simdim'], p['maxqlen'], filter_sizes, p['nfilter'], top_k=p['kmaxpool'], poses=maxpool_poses, selecter=p['distill'], nom_feat=p['nomfeat'])
 
+        single_feature = Lambda(lambda x: [tf.squeeze(tf.slice(x, [0,0,0,i], [-1,-1,-1,1]), -1) for i in range(p['nomfeat'])],
+                                name='single_feature_slicer')
+
         query_idf = Reshape((p['maxqlen'], 1))(Activation('softmax',
                             name='softmax_q_idf')(Flatten()(r_query_idf)))
 
@@ -101,6 +104,7 @@ class PACRR(MODEL_BASE):
                     
                 for n_x, n_y in ng_fsizes[ng]:
                     dim_name = self._get_dim_name(n_x, n_y)
+
                     if n_x == 1 and n_y == 1:
                         doc_cov = doc_inputs[input_ng]
                         re_doc_cov = doc_cov
@@ -108,13 +112,22 @@ class PACRR(MODEL_BASE):
                         doc_cov = cov_sim_layers[dim_name](re_input(doc_inputs[input_ng]))
                         re_doc_cov = re_lq_ds[dim_name](pool_filter_layer[dim_name](Permute((1, 3, 2))(doc_cov)))
                     self.vis_out['conv%s' % ng] = doc_cov
-                        
+
                     if p['context']:
                         ng_signal = pool_sdim_layer_context[dim_name]([re_doc_cov, doc_inputs['context']])
                     else:
-                        ng_signal = pool_sdim_layer[dim_name](re_doc_cov)
+                        if dim_name == '1x1':
+
+                            print('//////////////')
+                            features = single_feature(re_doc_cov)
+                            for i in range(p['nomfeat']):
+                                ng_signal = pool_sdim_layer[dim_name](features[i])
+                                doc_qts_scores.append(ng_signal)
+                        else:
+                            ng_signal = pool_sdim_layer[dim_name](re_doc_cov)
+                            doc_qts_scores.append(ng_signal)
                     
-                    doc_qts_scores.append(ng_signal)
+
 
             if len(doc_qts_scores) == 1:                
                 doc_qts_score = doc_qts_scores[0]
@@ -135,7 +148,7 @@ class PACRR(MODEL_BASE):
         
         p = self.p
         
-        doc_inputs = self._create_inputs('doc', self.p['nom_feat'])
+        doc_inputs = self._create_inputs('doc', self.p['nomfeat'])
         if p['context']:
             doc_inputs['context'] = Input(shape=(p['maxqlen'], p['simdim']), name='doc_context')
 
@@ -152,7 +165,7 @@ class PACRR(MODEL_BASE):
     def build_predict(self):
         p = self.p
         
-        doc_inputs = self._create_inputs('doc', self.p['nom_feat'])
+        doc_inputs = self._create_inputs('doc', self.p['nomfeat'])
         if p['context']:
             doc_inputs['context'] = Input(shape=(p['maxqlen'], p['simdim']), name='doc_context')
 
@@ -189,13 +202,13 @@ class PACRR(MODEL_BASE):
 
         doc_scorer = self.build_doc_scorer(r_query_idf, permute_idxs=permute_input)
 
-        pos_inputs = self._create_inputs('pos', self.p['nom_feat'])
+        pos_inputs = self._create_inputs('pos', self.p['nomfeat'])
         if p['context']:
             pos_inputs['context'] = Input(shape=(p['maxqlen'], p['simdim']), name='pos_context')
             
         neg_inputs = {}
         for neg_ind in range(p['numneg']):
-            neg_inputs[neg_ind] = self._create_inputs('neg%d' % neg_ind, self.p['nom_feat'])
+            neg_inputs[neg_ind] = self._create_inputs('neg%d' % neg_ind, self.p['nomfeat'])
             if p['context']:
                 neg_inputs[neg_ind]['context'] = Input(shape=(p['maxqlen'], p['simdim']),
                                                        name='neg%d_context' % neg_ind)
@@ -211,7 +224,7 @@ class PACRR(MODEL_BASE):
         inputs = pos_input_list + neg_input_list + [r_query_idf]
         if p['shuffle']:
             inputs.append(permute_input)
-        
+
         self.model = Model(inputs = inputs, outputs = [pos_prob])
 
         self.model.compile(optimizer='adam', loss ='binary_crossentropy', metrics=['accuracy'])

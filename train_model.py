@@ -85,6 +85,7 @@ def main(_log, _config):
 
     # dump model plot
     built_model = model.build()
+    built_model.summary()
     model.build_predict()  # run build_predict to verify it's working
     dump_modelplot(built_model, detail_outdir + 'model_' + expid)
 
