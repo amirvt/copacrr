@@ -19,7 +19,7 @@ combine=16
 qproximity=0
 iterations=10
 shuffle=False
-parentdir=~/playground/copacrr/out
+parentdir=~/PycharmProjects/copacrr/out
 outdir=$parentdir
 
 

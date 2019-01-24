@@ -53,7 +53,7 @@ train_test_years = \
     }
 
 
-os.environ['parentdir'] = '/home/amir/playground/copacrr/out'
+os.environ['parentdir'] = '/home/amir/PycharmProjects/copacrr/out'
 
 for train_years, (valid_year, test_year) in train_test_years.items():
     os.environ['train_years'] = train_years

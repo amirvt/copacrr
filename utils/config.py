@@ -40,24 +40,24 @@ treceval=os.path.join(cur_dir,"libs","trec_eval.9.0","trec_eval")
 '''
 simmat directory and its structure.
 1) simmat for topic field in the trec query
-rawdoc_mat_dir/topic_doc_mat/qid/clueweb_id.npy
+rawdoc_mat_dir/topic_doc_mat/qid/clueweb_id
 like:
-rawdoc_mat_dir/topic_doc_mat/1/clueweb09-en0132-08-08589.npy
+rawdoc_mat_dir/topic_doc_mat/1/clueweb09-en0132-08-08589
 
 2) simmat for description field in the trec query
-rawdoc_mat_dir/desc_doc_mat/qid/clueweb_id.npy
+rawdoc_mat_dir/desc_doc_mat/qid/clueweb_id
 like:
-rawdoc_mat_dir/desc_doc_mat/1/clueweb09-en0132-08-08589.npy
+rawdoc_mat_dir/desc_doc_mat/1/clueweb09-en0132-08-08589
 
 3) simmat for the idf of different terms
-rawdoc_mat_dir/query_idf/desc_term_idf/qid.npy
-rawdoc_mat_dir/query_idf/topic_term_idf/qid.npy
+rawdoc_mat_dir/query_idf/desc_term_idf/qid
+rawdoc_mat_dir/query_idf/topic_term_idf/qid
 like:
-rawdoc_mat_dir/query_idf/desc_term_idf/1.npy
-rawdoc_mat_dir/query_idf/topic_term_idf/1.npy
+rawdoc_mat_dir/query_idf/desc_term_idf/1
+rawdoc_mat_dir/query_idf/topic_term_idf/1
 '''
 # the directory helds the similarity matrices 
-sim_dir="/home/amir/playground/copacrr"
+sim_dir="/home/amir/PycharmProjects/copacrr"
 rawdoc_mat_dir=os.path.join(sim_dir, 'cosine')
 #"/directory to the pre-computed similarity matrices/"
 # the mat for the context needs to be pre-computed if context=True
@@ -119,7 +119,7 @@ def default_params():
     drmmdense = 5
 
     ut = True # use topics in queries
-    ud = True # use descriptions in queries
+    ud = False # use descriptions in queries
 
     if 'debug' in expname:
         epochs = 5

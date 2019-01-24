@@ -31,7 +31,8 @@ python3 -m train_model with\
 	shuffle=$shuffle \
 	parentdir=$parentdir \
 	epochs=$iterations \
-	outdir=$outdir
+	outdir=$outdir \
+	ud=False
 END=$(date +%s.%N)
 DIFF=$(echo "$END - $START" | bc)
 echo $id finished within $DIFF

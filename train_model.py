@@ -93,7 +93,9 @@ def main(_log, _config):
 
     # keras 2 steps per epoch is number of batches per epoch, not number of samples per epoch
     steps_per_epoch = np.int(p['nsamples'] / p['batch'])
-    
+
+    p['ud']=False
+
     # the generator for training data
     train_data_generator=\
             load_train_data_generator(qids, rawdoc_mat_dir, qid_cwid_label, N_GRAMS, p,\

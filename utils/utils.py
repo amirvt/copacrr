@@ -65,8 +65,8 @@ def _load_doc_mat_desc(qids, qid_cwid_label, doc_mat_dir, qid_topic_idf, qid_des
             docmap_t = json.loads(h5['/topic/%s' % qid].attrs['docmap'])
 
         for cwid in qid_cwid_label[qid]:
-            topic_cwid_f = doc_mat_dir + '/topic_doc_mat/%d/%s.npy' % (qid, cwid)
-            desc_cwid_f = doc_mat_dir + '/desc_doc_mat/%d/%s.npy' % (qid, cwid)
+            topic_cwid_f = doc_mat_dir + '/topic_doc_mat/%d/%s' % (qid, cwid)
+            desc_cwid_f = doc_mat_dir + '/desc_doc_mat/%d/%s' % (qid, cwid)
             topic_mat, desc_mat = np.empty((0, 0), dtype=np.float32), np.empty((0, 0), dtype=np.float32)
             if h5 is not None and cwid not in docmap_t:
                 logger.error('topic %s not exist.' % cwid)
@@ -83,9 +83,10 @@ def _load_doc_mat_desc(qids, qid_cwid_label, doc_mat_dir, qid_topic_idf, qid_des
                     continue
             if h5 is not None and cwid not in docmap_d:
                 logger.error('desc %s not exist.' % cwid)
-            elif h5 is None and not os.path.isfile(desc_cwid_f):
-                logger.error('%s not exist.' % desc_cwid_f)
+            # elif h5 is None and not os.path.isfile(desc_cwid_f):
+            #     logger.error('%s not exist.' % desc_cwid_f)
             elif usedesc:
+                print(usedesc)
                 if h5 is None:
                     # desc_mat = np.load(desc_cwid_f)[didxs]
                     desc_mat = np.genfromtxt(desc_cwid_f, delimiter=',')[:, :-1][didxs]
@@ -125,15 +126,14 @@ def load_query_idf(qids, doc_mat_dir):
     qid_topic_idf = dict()
     qid_desc_idf = dict()
     for qid in qids:
-        if not os.path.isfile(idfdir_topic + '/%d.npy' % qid) or not os.path.isfile(idfdir_desc + '/%d.npy' % qid):
+        if not os.path.isfile(idfdir_topic + '/%d' % qid) or not os.path.isfile(idfdir_desc + '/%d' % qid):
             logger.error('%d in %s or %s not exist' % (qid, idfdir_topic, idfdir_desc))
             continue
-        # qid_topic_idf[qid] = np.load(idfdir_topic + '/%d.npy'%qid)
-        qid_topic_idf[qid] = np.genfromtxt(idfdir_topic + '/%d.npy' % qid, delimiter=',')[:,
-                             :-1]  # np.load(idfdir_topic + '/%d.npy'%qid)
+        # qid_topic_idf[qid] = np.load(idfdir_topic + '/%d'%qid)
+        qid_topic_idf[qid] = np.genfromtxt(idfdir_topic + '/%d' % qid, delimiter=',')[:-1]  # np.load(idfdir_topic + '/%d'%qid)
 
-        # qid_desc_idf[qid] = np.load(idfdir_desc + '/%d.npy' % qid)
-        qid_desc_idf[qid] = np.genfromtxt(idfdir_desc + '/%d.npy' % qid, delimiter=',')[:, :-1]
+        # qid_desc_idf[qid] = np.load(idfdir_desc + '/%d' % qid)
+        qid_desc_idf[qid] = np.genfromtxt(idfdir_desc + '/%d' % qid, delimiter=',')[:-1]
     return qid_topic_idf, qid_desc_idf
 
 
