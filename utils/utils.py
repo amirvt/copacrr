@@ -27,7 +27,7 @@ class DumpWeight(Callback):
 
 
 def _load_doc_mat_desc(qids, qid_cwid_label, doc_mat_dir, qid_topic_idf, qid_desc_idf, usetopic, usedesc, maxqlen,
-                       h5fn=None):
+                       feature_names=["sims"] , h5fn=None):
     assert usetopic or usedesc, "must use at least one of topic or desc"
 
     h5fn = doc_mat_dir + '.hdf5'
@@ -65,17 +65,17 @@ def _load_doc_mat_desc(qids, qid_cwid_label, doc_mat_dir, qid_topic_idf, qid_des
             docmap_t = json.loads(h5['/topic/%s' % qid].attrs['docmap'])
 
         for cwid in qid_cwid_label[qid]:
-            topic_cwid_f = doc_mat_dir + '/topic_doc_mat/%d/%s' % (qid, cwid)
-            desc_cwid_f = doc_mat_dir + '/desc_doc_mat/%d/%s' % (qid, cwid)
+            topic_cwid_fs = [doc_mat_dir + '/topic_doc_mat/%s/%d/%s' % (fname,qid, cwid) for fname in feature_names]
+            desc_cwid_fs = [doc_mat_dir + '/desc_doc_mat/%s/%d/%s' % (fname, qid, cwid) for fname in feature_names]
             topic_mat, desc_mat = np.empty((0, 0), dtype=np.float32), np.empty((0, 0), dtype=np.float32)
             if h5 is not None and cwid not in docmap_t:
                 logger.error('topic %s not exist.' % cwid)
-            elif h5 is None and not os.path.isfile(topic_cwid_f):
-                logger.error('%s not exist.' % topic_cwid_f)
+            elif h5 is None and not os.path.isfile(topic_cwid_fs):
+                logger.error('%s not exist.' % topic_cwid_fs)
             elif usetopic:
                 if h5 is None:
                     # topic_mat = np.load(topic_cwid_f)
-                    topic_mat = np.genfromtxt(topic_cwid_f, delimiter=',')[:, :-1]
+                    topic_mat = [np.genfromtxt(topic_cwid_f, delimiter=',')[:, :-1] for topic_cwid_f in topic_cwid_fs]
                 else:
                     topic_mat = np.vstack(h5['/topic/%s' % qid][docmap_t[cwid]])
                 if len(topic_mat.shape) != 2:
@@ -89,27 +89,36 @@ def _load_doc_mat_desc(qids, qid_cwid_label, doc_mat_dir, qid_topic_idf, qid_des
                 print(usedesc)
                 if h5 is None:
                     # desc_mat = np.load(desc_cwid_f)[didxs]
-                    desc_mat = np.genfromtxt(desc_cwid_f, delimiter=',')[:, :-1][didxs]
+                    desc_mat = np.genfromtxt(desc_cwid_fs, delimiter=',')[:, :-1][didxs]
                 else:
                     desc_mat = np.vstack(h5['/desc/%s' % qid][docmap_d[cwid]])[didxs]
                 if len(desc_mat.shape) != 2:
                     logger.warning('desc_mat {0} {1} {2}'.format(qid, cwid, desc_mat.shape))
                     continue
             # if topic_mat.shape[1] == desc_mat.shape[1] and topic_mat.shape[1]>0:
-            empty = True
-            m = []
-            if usetopic:
-                m.append(topic_mat)
-                if topic_mat.shape[1] > 0:
-                    empty = False
-            if usedesc:
-                m.append(desc_mat)
-                if desc_mat.shape[1] > 0:
-                    empty = False
-            if usetopic and usedesc and topic_mat.shape[1] != desc_mat.shape[1]:
-                empty = True
+            # empty = True
+            # m = []
+            # if usetopic:
+            #     m.append(topic_mat)
+            #     if topic_mat.shape[1] > 0:
+            #         empty = False
+            # if usedesc:
+            #     m.append(desc_mat)
+            #     if desc_mat.shape[1] > 0:
+            #         empty = False
+            # if usetopic and usedesc and topic_mat.shape[1] != desc_mat.shape[1]:
+            #     empty = True
+
+            empty = False
+            shape = topic_mat[0].shape
+            for mat in topic_mat:
+                if mat.shape != shape or mat.shape[1] == 0:
+                    empty = True
+
             if not empty:
-                qid_cwid_simmat[qid][cwid] = np.concatenate(m, axis=0).astype(np.float32)
+                # qid_cwid_simmat[qid][cwid] = np.concatenate(m, axis=0).astype(np.float32)
+                qid_cwid_simmat[qid][cwid] = np.array([mat for mat in topic_mat]).astype(np.float32)
+                qid_cwid_simmat[qid][cwid] = np.moveaxis(qid_cwid_simmat[qid][cwid], 0, -1)
 
             else:
                 logger.error('dimension mismatch {0} {1} {2} {3}'.format(qid, cwid, topic_mat.shape, desc_mat.shape))
@@ -168,12 +177,12 @@ def convert_cwid_udim_simmat(qids, qid_cwid_rmat, select_pos_func, \
                 if n_gram not in qid_cwid_mat[qid]:
                     qid_cwid_mat[qid][n_gram] = dict()
                 if len_doc > dim_sim:
-                    rmat = np.pad(qid_cwid_rmat[qid][cwid], pad_width=((0, max_query_term - len_query), (0, 1)),
+                    rmat = np.pad(qid_cwid_rmat[qid][cwid], pad_width=((0, max_query_term - len_query), (0, 1), (0,0)),
                                   mode='constant', constant_values=pad_value).astype(np.float32)
                     selected_inds = select_pos_func(qid_cwid_rmat[qid][cwid], dim_sim, n_gram)
 
                     if qid_cwid_qermat is None:
-                        qid_cwid_mat[qid][n_gram][cwid] = (rmat[:, selected_inds])
+                        qid_cwid_mat[qid][n_gram][cwid] = (rmat[:, selected_inds, :])
                     else:
                         qermat = np.pad(qid_cwid_qermat[qid][cwid], pad_width=((0, max_query_term - len_query), (0, 1)),
                                         mode='constant', constant_values=pad_value).astype(np.float32)
@@ -187,7 +196,7 @@ def convert_cwid_udim_simmat(qids, qid_cwid_rmat, select_pos_func, \
                         qid_cwid_mat[qid][n_gram][cwid] = \
                             (np.pad(qid_cwid_rmat[qid][cwid], \
                                     pad_width=((0, max_query_term - len_query), \
-                                               (0, dim_sim - len_doc)), mode='constant', \
+                                               (0, dim_sim - len_doc), (0,0)), mode='constant', \
                                     constant_values=pad_value).astype(np.float32))
                     else:
                         qid_cwid_mat[qid][n_gram][cwid] = \
@@ -208,7 +217,7 @@ def convert_cwid_udim_simmat(qids, qid_cwid_rmat, select_pos_func, \
                 else:
                     if qid_cwid_qermat is None:
                         qid_cwid_mat[qid][n_gram][cwid] = (np.pad(qid_cwid_rmat[qid][cwid], \
-                                                                  pad_width=((0, max_query_term - len_query), (0, 0)), \
+                                                                  pad_width=((0, max_query_term - len_query), (0, 0), (0,0)), \
                                                                   mode='constant', constant_values=pad_value).astype(
                             np.float32))
                     else:
@@ -470,6 +479,7 @@ def load_train_data_generator(qids, rawdoc_mat_dir, qid_cwid_label, N_GRAMS, par
     CONTEXT = param_val['context']
     n_batch = param_val['batch']
     rnd_seed = param_val['seed']
+    feat_names = param_val['feat_names'].split("_")
     if POS_METHOD == 'firstk':
         mat_ngrams = [max(N_GRAMS)]
     else:

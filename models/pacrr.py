@@ -11,7 +11,7 @@ from utils.ngram_nfilter import get_ngram_nfilter
 class PACRR(MODEL_BASE):
     
     params = MODEL_BASE.common_params + ['distill', 'winlen', 'nfilter', 'kmaxpool', 'combine',
-                                         'qproximity', 'context', 'shuffle', 'xfilters', 'cascade']
+                                         'qproximity', 'context', 'shuffle', 'xfilters', 'cascade', 'nom_feat']
 
     def __init__(self, *args, **kwargs):
         super(PACRR, self).__init__(*args, **kwargs)
@@ -135,7 +135,7 @@ class PACRR(MODEL_BASE):
         
         p = self.p
         
-        doc_inputs = self._create_inputs('doc')
+        doc_inputs = self._create_inputs('doc', self.p['nom_feat'])
         if p['context']:
             doc_inputs['context'] = Input(shape=(p['maxqlen'], p['simdim']), name='doc_context')
 
@@ -152,7 +152,7 @@ class PACRR(MODEL_BASE):
     def build_predict(self):
         p = self.p
         
-        doc_inputs = self._create_inputs('doc')
+        doc_inputs = self._create_inputs('doc', self.p['nom_feat'])
         if p['context']:
             doc_inputs['context'] = Input(shape=(p['maxqlen'], p['simdim']), name='doc_context')
 
@@ -165,16 +165,16 @@ class PACRR(MODEL_BASE):
         return self.model
 
 
-    def _create_inputs(self, prefix):
+    def _create_inputs(self, prefix, nom_of_features):
         p = self.p
         if p['distill'] == 'firstk':
             ng = max(self.NGRAMS)
-            shared = Input(shape = (p['maxqlen'], p['simdim']), name='%s_wlen_%d' % (prefix, ng))
+            shared = Input(shape = (p['maxqlen'], p['simdim'], nom_of_features), name='%s_wlen_%d' % (prefix, ng))
             inputs = {ng: shared}
         else:
             inputs = {}
             for ng in self.NGRAMS:
-                inputs[ng] = Input(shape = (p['maxqlen'], p['simdim']), name='%s_wlen_%d' % (prefix, ng))
+                inputs[ng] = Input(shape = (p['maxqlen'], p['simdim'], nom_of_features), name='%s_wlen_%d' % (prefix, ng))
             
         return inputs
     
@@ -189,13 +189,13 @@ class PACRR(MODEL_BASE):
 
         doc_scorer = self.build_doc_scorer(r_query_idf, permute_idxs=permute_input)
 
-        pos_inputs = self._create_inputs('pos')        
+        pos_inputs = self._create_inputs('pos', self.p['nom_feat'])
         if p['context']:
             pos_inputs['context'] = Input(shape=(p['maxqlen'], p['simdim']), name='pos_context')
             
         neg_inputs = {}
         for neg_ind in range(p['numneg']):
-            neg_inputs[neg_ind] = self._create_inputs('neg%d' % neg_ind)
+            neg_inputs[neg_ind] = self._create_inputs('neg%d' % neg_ind, self.p['nom_feat'])
             if p['context']:
                 neg_inputs[neg_ind]['context'] = Input(shape=(p['maxqlen'], p['simdim']),
                                                        name='neg%d_context' % neg_ind)
