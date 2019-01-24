@@ -56,23 +56,23 @@ train_test_years = \
 os.environ['parentdir'] = '/home/amir/playground/copacrr/out'
 
 for train_years, (valid_year, test_year) in train_test_years.items():
-    # os.environ['train_years'] = train_years
-    # os.environ['test_year'] = test_year
-    # os.environ['valid_years'] = valid_year
-    # print('*******')
-    # print('trains_years=', train_years)
-    # print('*******')
-    # process = subprocess.Popen(['bash', './bin/train_model.sh'], env=dict(os.environ, train_years=train_years))
-    # process.wait()
-    # print('*******')
+    os.environ['train_years'] = train_years
+    os.environ['test_year'] = test_year
+    os.environ['valid_years'] = valid_year
+    print('*******')
+    print('trains_years=', train_years)
+    print('*******')
+    process = subprocess.Popen(['bash', './bin/train_model.sh'], env=dict(os.environ, train_years=train_years))
+    process.wait()
+    print('*******')
     # print('trains_years=', train_years)
     # print('test_year=', test_year)
     # print('*******')
     # process = subprocess.Popen(['bash', './bin/pred_per_epoch.sh'], env=dict(os.environ, train_years=train_years, test_year=test_year))
     # process.wait()
-    print('*******')
-    print('trains_years=', train_years)
-    print('test_year=', valid_year)
-    print('*******')
-    process = subprocess.Popen(['bash', './bin/pred_per_epoch.sh'], env=dict(os.environ, train_years=train_years, test_year=valid_year))
-    process.wait()
+    # print('*******')
+    # print('trains_years=', train_years)
+    # print('test_year=', valid_year)
+    # print('*******')
+    # process = subprocess.Popen(['bash', './bin/pred_per_epoch.sh'], env=dict(os.environ, train_years=train_years, test_year=valid_year))
+    # process.wait()

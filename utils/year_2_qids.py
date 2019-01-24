@@ -30,9 +30,12 @@ def get_train_qids(fold, years=fold_names[:-1]):
 
 # TODO what does this do?
 def get_qrelf(basepath, year):
-    if year.startswith("nwt") or year.startswith("wt"):
-        qrelf = os.path.join(basepath, 'qrels.adhoc.6y')
-    else:
-        print("WARNING: no qrelf exists for get_train_qids on year: %s" % year)
-        qrelf = None
+    # if year.startswith("nwt") or year.startswith("wt"):
+    #     qrelf = os.path.join(basepath, 'qrels.adhoc.6y')
+    # else:
+    #     print("WARNING: no qrelf exists for get_train_qids on year: %s" % year)
+    #     qrelf = None
+
+    qrelf = os.path.join(basepath, 'qrels.adhoc.6y')
+
     return qrelf
