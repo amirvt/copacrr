@@ -3,7 +3,7 @@ from scipy.stats import ttest_rel, ttest_ind
 from utils.common_utils import read_qrel, config_logger
 from utils.config import train_test_years, file2name, perlf, trec_run_basedir, eval_trec_run_basedir, qrelfdir
 from utils.eval_utils import read_run, jud_label, label_jud, year_label_jud, get_epoch_from_val, get_model_param
-from utils.year_2_qids import qid_year, year_qids, get_qrelf
+from utils.year_2_qids import qid_year, year_qids, get_qrelf, fold_names
 import numpy as np, matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
@@ -200,7 +200,7 @@ def main(_log, _config):
             # orig_rank, orig_score, qidscores, rr_rank, rr_score, qidscores
             orig_rr_ndcg_rank, orig_rr_err_rank = get_rank(rr_trecrun_qid_ndcgerr, trecrun_qid_ndcgerr)
 
-            if test_year in ['wt09', 'wt10', 'wt11', 'wt12', 'wt13', 'wt14']:
+            if test_year in fold_names:
                 # query likelihood benchmark
                 cols=['QL-Variants', 'Measures', 'TREC', 'Trec-Rank', 'Rerank', 'Rerank-Rank', 'Comparison', 'p-value']
                 tabledict=dict()
