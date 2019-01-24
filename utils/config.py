@@ -86,7 +86,7 @@ def default_params():
     binmat = False # use binary similarity matrices? (boolean)
     numneg = 1 # number of non-relevant docs in softmax
     batch = 16 # batch size
-    epochs = 30 # number of iterations to run
+    epochs = 150 # number of iterations to run
     nsamples = 2048 # samples per epoch
     maxqlen = 16 # maximum query length
     
