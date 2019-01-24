@@ -76,6 +76,8 @@ def _load_doc_mat_desc(qids, qid_cwid_label, doc_mat_dir, qid_topic_idf, qid_des
                 if h5 is None:
                     # topic_mat = np.load(topic_cwid_f)
                     topic_mat = [np.genfromtxt(topic_cwid_f, delimiter=',')[:, :-1] for topic_cwid_f in topic_cwid_fs]
+                    for i in range(len(topic_mat)):
+                        topic_mat[i] = np.nan_to_num(topic_mat[i], 0)
                 else:
                     topic_mat = np.vstack(h5['/topic/%s' % qid][docmap_t[cwid]])
                 if len(topic_mat.shape) != 2:
@@ -90,6 +92,7 @@ def _load_doc_mat_desc(qids, qid_cwid_label, doc_mat_dir, qid_topic_idf, qid_des
                 if h5 is None:
                     # desc_mat = np.load(desc_cwid_f)[didxs]
                     desc_mat = np.genfromtxt(desc_cwid_fs, delimiter=',')[:, :-1][didxs]
+                    desc_mat = np.nan_to_num(desc_mat, 0)
                 else:
                     desc_mat = np.vstack(h5['/desc/%s' % qid][docmap_d[cwid]])[didxs]
                 if len(desc_mat.shape) != 2:
