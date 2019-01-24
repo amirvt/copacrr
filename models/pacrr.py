@@ -62,7 +62,7 @@ class PACRR(MODEL_BASE):
                     added_fs.add(dim_name)
 
         re_input, cov_sim_layers, pool_sdim_layer, pool_sdim_layer_context, pool_filter_layer, ex_filter_layer, re_lq_ds =\
-        self._cov_dsim_layers(p['simdim'], p['maxqlen'], filter_sizes, p['nfilter'], top_k=p['kmaxpool'], poses=maxpool_poses, selecter=p['distill'])
+        self._cov_dsim_layers(p['simdim'], p['maxqlen'], filter_sizes, p['nfilter'], top_k=p['kmaxpool'], poses=maxpool_poses, selecter=p['distill'], nom_feat=p['nomfeat'])
 
         query_idf = Reshape((p['maxqlen'], 1))(Activation('softmax',
                             name='softmax_q_idf')(Flatten()(r_query_idf)))

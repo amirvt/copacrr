@@ -135,8 +135,8 @@ class MODEL_BASE:
     def _get_dim_name(self, n_x, n_y):
         return '%dx%d'%(n_x,n_y)
 
-    def _cov_dsim_layers(self, dim_sim, len_query, n_grams, n_filter, top_k, poses, selecter):
-        re_input = Reshape((len_query, dim_sim, 1), name='ql_ds_doc')
+    def _cov_dsim_layers(self, dim_sim, len_query, n_grams, n_filter, top_k, poses, selecter, nom_feat=1):
+        re_input = Reshape((len_query, dim_sim, nom_feat), name='ql_ds_doc')
         cov_sim_layers = dict()
         pool_sdim_layer=dict()
         pool_sdim_layer_context=dict()
