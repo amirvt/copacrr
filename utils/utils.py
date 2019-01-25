@@ -499,7 +499,7 @@ def load_train_data_generator(qids, rawdoc_mat_dir, qid_cwid_label, N_GRAMS, par
     qid_topic_idf, qid_desc_idf = load_query_idf(qids, rawdoc_mat_dir)
     qid_cwid_rmat, qid_term_idf = _load_doc_mat_desc(qids, qid_cwid_label, rawdoc_mat_dir, qid_topic_idf, qid_desc_idf,
                                                      usetopic=param_val['ut'], usedesc=param_val['ud'],
-                                                     maxqlen=MAX_QUERY_LENGTH)
+                                                     maxqlen=MAX_QUERY_LENGTH, feat_names=feat_names)
     qid_cwid_rqexpmat = None
     qid_wlen_cwid_mat, qid_ext_idfarr, qid_context = convert_cwid_udim_simmat(qids, qid_cwid_rmat, select_pos_func,
                                                                               qid_term_idf, qid_cwid_rqexpmat, \
