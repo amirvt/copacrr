@@ -3,20 +3,21 @@ import os
 
 fold_names = ['fold01', 'fold02', 'fold03', 'fold04', 'fold05']
 
-query_start = 430
-query_end = 449
-number_of_queries = query_end - query_start + 1
+query_range = list(range(301,450)) + list(range(601,700))
+
+number_of_queries = len(query_range)
+
 fold_len = number_of_queries // len(fold_names)
 
 qid_year = dict(zip(
-    list(range(query_start, query_end + 1)),
+    query_range,
     list(itertools.chain(*[[fold] * fold_len for fold in fold_names]))
 ))
 
 
 
 year_qids = {
-    fold: list(range(i * fold_len + query_start, i * fold_len + fold_len + query_start)) for i, fold in enumerate(fold_names)
+    fold: query_range[(i * fold_len):((i+1)*fold_len)] for i, fold in enumerate(fold_names)
 }
 
 
