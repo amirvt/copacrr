@@ -26,6 +26,30 @@ class DumpWeight(Callback):
         logger.info('Callback dumped %s' % weight_name)
 
 
+def get_doc_matrix(qid, cwid, doc_mat_dir, feature_names):
+    topic_cwid_fs = [doc_mat_dir + '/topic_doc_mat/%s/%d/%s' % (fname, qid, cwid) for fname in feature_names]
+    desc_cwid_fs = [doc_mat_dir + '/desc_doc_mat/%s/%d/%s' % (fname, qid, cwid) for fname in feature_names]
+    topic_mat, desc_mat = np.empty((0, 0), dtype=np.float32), np.empty((0, 0), dtype=np.float32)
+
+    topic_mat = [np.genfromtxt(topic_cwid_f, delimiter=',')[:, :-1] for topic_cwid_f in topic_cwid_fs]
+    #         for i in range(len(topic_mat)):
+    #             topic_mat[i] = np.nan_to_num(topic_mat[i], 0)
+
+    empty = False
+    shape = topic_mat[0].shape
+    for mat in topic_mat:
+        if mat.shape != shape or mat.shape[1] == 0:
+            empty = True
+
+    if not empty:
+        # qid_cwid_simmat[qid][cwid] = np.concatenate(m, axis=0).astype(np.float32)
+        qid_cwid_simmat[qid][cwid] = np.array([mat for mat in topic_mat]).astype(np.float32)
+        qid_cwid_simmat[qid][cwid] = np.moveaxis(qid_cwid_simmat[qid][cwid], 0, -1)
+
+    else:
+        logger.error('dimension mismatch {0} {1} {2} {3}'.format(qid, cwid, topic_mat.shape, desc_mat.shape))
+
+
 def _load_doc_mat_desc(qids, qid_cwid_label, doc_mat_dir, qid_topic_idf, qid_desc_idf, usetopic, usedesc, maxqlen,
                        feature_names=["sims"] , h5fn=None):
     assert usetopic or usedesc, "must use at least one of topic or desc"
@@ -68,36 +92,36 @@ def _load_doc_mat_desc(qids, qid_cwid_label, doc_mat_dir, qid_topic_idf, qid_des
             topic_cwid_fs = [doc_mat_dir + '/topic_doc_mat/%s/%d/%s' % (fname,qid, cwid) for fname in feature_names]
             desc_cwid_fs = [doc_mat_dir + '/desc_doc_mat/%s/%d/%s' % (fname, qid, cwid) for fname in feature_names]
             topic_mat, desc_mat = np.empty((0, 0), dtype=np.float32), np.empty((0, 0), dtype=np.float32)
-            if h5 is not None and cwid not in docmap_t:
-                logger.error('topic %s not exist.' % cwid)
-            elif h5 is None and not os.path.isfile(topic_cwid_fs[0]):
-                logger.error('%s not exist.' % topic_cwid_fs[0])
-            elif usetopic:
-                if h5 is None:
-                    # topic_mat = np.load(topic_cwid_f)
-                    topic_mat = [np.genfromtxt(topic_cwid_f, delimiter=',')[:, :-1] for topic_cwid_f in topic_cwid_fs]
-                    for i in range(len(topic_mat)):
-                        topic_mat[i] = np.nan_to_num(topic_mat[i], 0)
-                else:
-                    topic_mat = np.vstack(h5['/topic/%s' % qid][docmap_t[cwid]])
-                if any(len(i.shape) != 2 for i in topic_mat):
-                    logger.warning('topic_mat {0} {1} {2}'.format(qid, cwid, topic_mat.shape))
-                    continue
-            if h5 is not None and cwid not in docmap_d:
-                logger.error('desc %s not exist.' % cwid)
-            # elif h5 is None and not os.path.isfile(desc_cwid_f):
-            #     logger.error('%s not exist.' % desc_cwid_f)
-            elif usedesc:
-                print(usedesc)
-                if h5 is None:
-                    # desc_mat = np.load(desc_cwid_f)[didxs]
-                    desc_mat = np.genfromtxt(desc_cwid_fs, delimiter=',')[:, :-1][didxs]
-                    desc_mat = np.nan_to_num(desc_mat, 0)
-                else:
-                    desc_mat = np.vstack(h5['/desc/%s' % qid][docmap_d[cwid]])[didxs]
-                if len(desc_mat.shape) != 2:
-                    logger.warning('desc_mat {0} {1} {2}'.format(qid, cwid, desc_mat.shape))
-                    continue
+            # if h5 is not None and cwid not in docmap_t:
+            #     logger.error('topic %s not exist.' % cwid)
+            # elif h5 is None and not os.path.isfile(topic_cwid_fs[0]):
+            #     logger.error('%s not exist.' % topic_cwid_fs[0])
+            # elif usetopic:
+            #     if h5 is None:
+            #         # topic_mat = np.load(topic_cwid_f)
+            #         topic_mat = [np.genfromtxt(topic_cwid_f, delimiter=',')[:, :-1] for topic_cwid_f in topic_cwid_fs]
+            #         for i in range(len(topic_mat)):
+            #             topic_mat[i] = np.nan_to_num(topic_mat[i], 0)
+            #     else:
+            #         topic_mat = np.vstack(h5['/topic/%s' % qid][docmap_t[cwid]])
+            #     if any(len(i.shape) != 2 for i in topic_mat):
+            #         logger.warning('topic_mat {0} {1} {2}'.format(qid, cwid, topic_mat.shape))
+            #         continue
+            # if h5 is not None and cwid not in docmap_d:
+            #     logger.error('desc %s not exist.' % cwid)
+            # # elif h5 is None and not os.path.isfile(desc_cwid_f):
+            # #     logger.error('%s not exist.' % desc_cwid_f)
+            # elif usedesc:
+            #     print(usedesc)
+            #     if h5 is None:
+            #         # desc_mat = np.load(desc_cwid_f)[didxs]
+            #         desc_mat = np.genfromtxt(desc_cwid_fs, delimiter=',')[:, :-1][didxs]
+            #         desc_mat = np.nan_to_num(desc_mat, 0)
+            #     else:
+            #         desc_mat = np.vstack(h5['/desc/%s' % qid][docmap_d[cwid]])[didxs]
+            #     if len(desc_mat.shape) != 2:
+            #         logger.warning('desc_mat {0} {1} {2}'.format(qid, cwid, desc_mat.shape))
+            #         continue
             # if topic_mat.shape[1] == desc_mat.shape[1] and topic_mat.shape[1]>0:
             # empty = True
             # m = []
@@ -112,19 +136,19 @@ def _load_doc_mat_desc(qids, qid_cwid_label, doc_mat_dir, qid_topic_idf, qid_des
             # if usetopic and usedesc and topic_mat.shape[1] != desc_mat.shape[1]:
             #     empty = True
 
-            empty = False
-            shape = topic_mat[0].shape
-            for mat in topic_mat:
-                if mat.shape != shape or mat.shape[1] == 0:
-                    empty = True
-
-            if not empty:
-                # qid_cwid_simmat[qid][cwid] = np.concatenate(m, axis=0).astype(np.float32)
-                qid_cwid_simmat[qid][cwid] = np.array([mat for mat in topic_mat]).astype(np.float32)
-                qid_cwid_simmat[qid][cwid] = np.moveaxis(qid_cwid_simmat[qid][cwid], 0, -1)
-
-            else:
-                logger.error('dimension mismatch {0} {1} {2} {3}'.format(qid, cwid, topic_mat.shape, desc_mat.shape))
+            # empty = False
+            # shape = topic_mat[0].shape
+            # for mat in topic_mat:
+            #     if mat.shape != shape or mat.shape[1] == 0:
+            #         empty = True
+            #
+            # if not empty:
+            #     # qid_cwid_simmat[qid][cwid] = np.concatenate(m, axis=0).astype(np.float32)
+            #     qid_cwid_simmat[qid][cwid] = np.array([mat for mat in topic_mat]).astype(np.float32)
+            qid_cwid_simmat[qid][cwid] = 1
+            #
+            # else:
+            #     logger.error('dimension mismatch {0} {1} {2} {3}'.format(qid, cwid, topic_mat.shape, desc_mat.shape))
 
     if h5 is not None:
         h5.close()
