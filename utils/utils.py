@@ -26,14 +26,16 @@ class DumpWeight(Callback):
         logger.info('Callback dumped %s' % weight_name)
 
 
-def get_doc_matrix(qid, cwid, doc_mat_dir, feature_names):
+def get_doc_matrix(qid, cwid, doc_mat_dir, feature_names, n_grams, dim_sim, max_query_term, select_pos_func):
     topic_cwid_fs = [doc_mat_dir + '/topic_doc_mat/%s/%d/%s' % (fname, qid, cwid) for fname in feature_names]
-    desc_cwid_fs = [doc_mat_dir + '/desc_doc_mat/%s/%d/%s' % (fname, qid, cwid) for fname in feature_names]
-    topic_mat, desc_mat = np.empty((0, 0), dtype=np.float32), np.empty((0, 0), dtype=np.float32)
 
-    topic_mat = [np.genfromtxt(topic_cwid_f, delimiter=',')[:, :-1] for topic_cwid_f in topic_cwid_fs]
-    #         for i in range(len(topic_mat)):
-    #             topic_mat[i] = np.nan_to_num(topic_mat[i], 0)
+    topic_mat = [np.genfromtxt(topic_cwid_f, delimiter=',').astype(np.float32) for topic_cwid_f in topic_cwid_fs]
+    for i in range(len(topic_mat)):
+        if len(topic_mat[i].shape) == 1:
+            topic_mat[i] = np.expand_dims(topic_mat[i], axis=0)[:,:-1]
+        else:
+            topic_mat[i] = topic_mat[i][:,:-1]
+        topic_mat[i] = np.nan_to_num(topic_mat[i], 0)
 
     empty = False
     shape = topic_mat[0].shape
@@ -42,13 +44,30 @@ def get_doc_matrix(qid, cwid, doc_mat_dir, feature_names):
             empty = True
 
     if not empty:
-        # qid_cwid_simmat[qid][cwid] = np.concatenate(m, axis=0).astype(np.float32)
-        qid_cwid_simmat[qid][cwid] = np.array([mat for mat in topic_mat]).astype(np.float32)
-        qid_cwid_simmat[qid][cwid] = np.moveaxis(qid_cwid_simmat[qid][cwid], 0, -1)
+        raw_res = np.array([mat for mat in topic_mat]).astype(np.float32)
+        raw_res = np.moveaxis(raw_res, 0, -1)
 
     else:
-        logger.error('dimension mismatch {0} {1} {2} {3}'.format(qid, cwid, topic_mat.shape, desc_mat.shape))
+        logger.error('dimension mismatch {0} {1} {2}'.format(qid, cwid, topic_mat[0].shape))
 
+
+    res = dict()
+    pad_value = 0
+    for n_gram in n_grams:
+        len_doc = raw_res.shape[1]
+        len_query = raw_res.shape[0]
+
+        if len_doc > dim_sim:
+            rmat = np.pad(raw_res, pad_width=((0, max_query_term - len_query), (0, 1), (0,0)),
+                          mode='constant', constant_values=pad_value).astype(np.float32)
+            selected_inds = select_pos_func(res, dim_sim, n_gram)
+            res[n_gram] = (rmat[:, selected_inds, :])
+        else:
+            res[n_gram] = (np.pad(raw_res, pad_width=((0, max_query_term - len_query),
+                                                      (0, dim_sim - len_doc), (0,0)), mode='constant',
+                                    constant_values=pad_value).astype(np.float32))
+
+    return raw_res
 
 def _load_doc_mat_desc(qids, qid_cwid_label, doc_mat_dir, qid_topic_idf, qid_desc_idf, usetopic, usedesc, maxqlen,
                        feature_names=["sims"] , h5fn=None):
@@ -194,77 +213,78 @@ def convert_cwid_udim_simmat(qids, qid_cwid_rmat, select_pos_func, \
                                pickle.load(open('%s/%s.p' % (contextdir, qid), 'rb')).items()}
             qid_context[qid] = {}
         for cwid in qid_cwid_rmat[qid]:
-            len_doc = qid_cwid_rmat[qid][cwid].shape[1]
-            len_query = qid_cwid_rmat[qid][cwid].shape[0]
+            # len_doc = qid_cwid_rmat[qid][cwid].shape[1]
+            # len_query = qid_cwid_rmat[qid][cwid].shape[0]
+            len_query = qid_term_idf[qid].shape[0]
             if qid not in qid_ext_idfarr:
                 qid_ext_idfarr[qid] = np.pad(qid_term_idf[qid], \
                                              pad_width=((0, max_query_term - len_query)), \
-                                             mode='constant', constant_values=-np.inf)
+                                             mode='constant', constant_values=-np.inf) # TODO ayyoob: it may be incorrect
             for n_gram in n_grams:
                 if n_gram not in qid_cwid_mat[qid]:
                     qid_cwid_mat[qid][n_gram] = dict()
-                if len_doc > dim_sim:
-                    rmat = np.pad(qid_cwid_rmat[qid][cwid], pad_width=((0, max_query_term - len_query), (0, 1), (0,0)),
-                                  mode='constant', constant_values=pad_value).astype(np.float32)
-                    selected_inds = select_pos_func(qid_cwid_rmat[qid][cwid], dim_sim, n_gram)
+                # if len_doc > dim_sim:
+                #     rmat = np.pad(qid_cwid_rmat[qid][cwid], pad_width=((0, max_query_term - len_query), (0, 1), (0,0)),
+                #                   mode='constant', constant_values=pad_value).astype(np.float32)
+                #     selected_inds = select_pos_func(qid_cwid_rmat[qid][cwid], dim_sim, n_gram)
+                #
+                #     if qid_cwid_qermat is None:
+                #         qid_cwid_mat[qid][n_gram][cwid] = (rmat[:, selected_inds, :])
+                #     else:
+                #         qermat = np.pad(qid_cwid_qermat[qid][cwid], pad_width=((0, max_query_term - len_query), (0, 1)),
+                #                         mode='constant', constant_values=pad_value).astype(np.float32)
+                #         qid_cwid_mat[qid][n_gram][cwid] = (rmat[:, selected_inds], \
+                #                                            qermat[:, selected_inds])
+                #
+                #     if context:
+                #         qid_context[qid][cwid] = qid_context_raw[cwid][selected_inds]
+                # elif len_doc < dim_sim:
+                #     if qid_cwid_qermat is None:
+                #         qid_cwid_mat[qid][n_gram][cwid] = \
+                #             (np.pad(qid_cwid_rmat[qid][cwid], \
+                #                     pad_width=((0, max_query_term - len_query), \
+                #                                (0, dim_sim - len_doc), (0,0)), mode='constant', \
+                #                     constant_values=pad_value).astype(np.float32))
+                #     else:
+                #         qid_cwid_mat[qid][n_gram][cwid] = \
+                #             (np.pad(qid_cwid_rmat[qid][cwid], \
+                #                     pad_width=((0, max_query_term - len_query), \
+                #                                (0, dim_sim - len_doc)), mode='constant', \
+                #                     constant_values=pad_value).astype(np.float32), \
+                #              np.pad(qid_cwid_qermat[qid][cwid], \
+                #                     pad_width=((0, max_query_term - len_query), \
+                #                                (0, dim_sim - len_doc)), mode='constant', \
+                #                     constant_values=pad_value).astype(np.float32))
+                #
+                #     if context:
+                #         qid_context[qid][cwid] = np.pad(qid_context_raw[cwid],
+                #                                         pad_width=((0, dim_sim - len_doc),),
+                #                                         mode='constant', constant_values=pad_value)
 
-                    if qid_cwid_qermat is None:
-                        qid_cwid_mat[qid][n_gram][cwid] = (rmat[:, selected_inds, :])
-                    else:
-                        qermat = np.pad(qid_cwid_qermat[qid][cwid], pad_width=((0, max_query_term - len_query), (0, 1)),
-                                        mode='constant', constant_values=pad_value).astype(np.float32)
-                        qid_cwid_mat[qid][n_gram][cwid] = (rmat[:, selected_inds], \
-                                                           qermat[:, selected_inds])
-
-                    if context:
-                        qid_context[qid][cwid] = qid_context_raw[cwid][selected_inds]
-                elif len_doc < dim_sim:
-                    if qid_cwid_qermat is None:
-                        qid_cwid_mat[qid][n_gram][cwid] = \
-                            (np.pad(qid_cwid_rmat[qid][cwid], \
-                                    pad_width=((0, max_query_term - len_query), \
-                                               (0, dim_sim - len_doc), (0,0)), mode='constant', \
-                                    constant_values=pad_value).astype(np.float32))
-                    else:
-                        qid_cwid_mat[qid][n_gram][cwid] = \
-                            (np.pad(qid_cwid_rmat[qid][cwid], \
-                                    pad_width=((0, max_query_term - len_query), \
-                                               (0, dim_sim - len_doc)), mode='constant', \
-                                    constant_values=pad_value).astype(np.float32), \
-                             np.pad(qid_cwid_qermat[qid][cwid], \
-                                    pad_width=((0, max_query_term - len_query), \
-                                               (0, dim_sim - len_doc)), mode='constant', \
-                                    constant_values=pad_value).astype(np.float32))
-
-                    if context:
-                        qid_context[qid][cwid] = np.pad(qid_context_raw[cwid],
-                                                        pad_width=((0, dim_sim - len_doc),),
-                                                        mode='constant', constant_values=pad_value)
-
-                else:
-                    if qid_cwid_qermat is None:
-                        qid_cwid_mat[qid][n_gram][cwid] = (np.pad(qid_cwid_rmat[qid][cwid], \
-                                                                  pad_width=((0, max_query_term - len_query), (0, 0), (0,0)), \
-                                                                  mode='constant', constant_values=pad_value).astype(
-                            np.float32))
-                    else:
-                        qid_cwid_mat[qid][n_gram][cwid] = (np.pad(qid_cwid_rmat[qid][cwid], \
-                                                                  pad_width=((0, max_query_term - len_query), (0, 0)), \
-                                                                  mode='constant', constant_values=pad_value).astype(
-                            np.float32), \
-                                                           np.pad(qid_cwid_qermat[qid][cwid], \
-                                                                  pad_width=((0, max_query_term - len_query), (0, 0)), \
-                                                                  mode='constant', constant_values=pad_value).astype(
-                                                               np.float32))
-                    if context:
-                        qid_context[qid][cwid] = qid_context_raw[cwid]
-
-                # hack so that we have the same shape as the sim matrices
-                if context:
-                    qid_context[qid][cwid] = np.array([qid_context[qid][cwid] for i in range(max_query_term)],
-                                                      dtype=np.float32)
-                else:
-                    qid_context = None
+                # else:
+                #     if qid_cwid_qermat is None:
+                #         qid_cwid_mat[qid][n_gram][cwid] = (np.pad(qid_cwid_rmat[qid][cwid], \
+                #                                                   pad_width=((0, max_query_term - len_query), (0, 0), (0,0)), \
+                #                                                   mode='constant', constant_values=pad_value).astype(
+                #             np.float32))
+                #     else:
+                #         qid_cwid_mat[qid][n_gram][cwid] = (np.pad(qid_cwid_rmat[qid][cwid], \
+                #                                                   pad_width=((0, max_query_term - len_query), (0, 0)), \
+                #                                                   mode='constant', constant_values=pad_value).astype(
+                #             np.float32), \
+                #                                            np.pad(qid_cwid_qermat[qid][cwid], \
+                #                                                   pad_width=((0, max_query_term - len_query), (0, 0)), \
+                #                                                   mode='constant', constant_values=pad_value).astype(
+                #                                                np.float32))
+                #     if context:
+                #         qid_context[qid][cwid] = qid_context_raw[cwid]
+                #
+                # # hack so that we have the same shape as the sim matrices
+                # if context:
+                #     qid_context[qid][cwid] = np.array([qid_context[qid][cwid] for i in range(max_query_term)],
+                #                                       dtype=np.float32)
+                # else:
+                #     qid_context = None
 
     return qid_cwid_mat, qid_ext_idfarr, qid_context
 
@@ -276,7 +296,7 @@ def sample_train_data_weighted(qid_wlen_cwid_mat, qid_cwid_label, \
                                n_query_terms=16, \
                                NUM_NEG=10, \
                                n_dims=300, n_batch=32, random_shuffle=True, random_seed=14, qid_context=None):
-    np.random.seed(random_seed)
+    #np.random.seed(random_seed) # TODO ayyoob add it to proper place
     context = qid_context is not None
     qid_label_cwids = dict()
     label_count = dict()
@@ -316,58 +336,64 @@ def sample_train_data_weighted(qid_wlen_cwid_mat, qid_cwid_label, \
             label_qid_prob[l] = {qid: label_qid_count[l][qid] / float(total_count) for qid in label_qid_count[l]}
     sample_label_qid_prob = {l: [label_qid_prob[l][qid] if qid in label_qid_prob[l] else 0 for qid in sample_qids] \
                              for l in label_qid_prob}
-    while 1:
-        pos_batch = dict()
-        neg_batch = dict()
-        qid_batch = list()
-        pcwid_batch = list()
-        ncwid_batch = list()
-        qidf_batch = list()
-        pos_context_batch = []
-        neg_context_batch = {}
-        ys = list()
-        selected_labels = np.random.choice([l for l in sorted(sample_label_prob)], \
-                                           size=n_batch, replace=True,
-                                           p=[sample_label_prob[l] for l in sorted(sample_label_prob)])
-        label_counter = Counter(selected_labels)
-        total_train_num = 0
-        for label in label_counter:
-            nl_selected = label_counter[label]
-            if nl_selected == 0:
+
+    pos_batch = dict()
+    neg_batch = dict()
+    qid_batch = list()
+    pcwid_batch = list()
+    ncwid_batch = list()
+    qidf_batch = list()
+    pos_context_batch = []
+    neg_context_batch = {}
+    ys = list()
+    selected_labels = np.random.choice([l for l in sorted(sample_label_prob)], \
+                                       size=n_batch, replace=True,
+                                       p=[sample_label_prob[l] for l in sorted(sample_label_prob)])
+    label_counter = Counter(selected_labels)
+    total_train_num = 0
+    for label in label_counter:
+        nl_selected = label_counter[label]
+        if nl_selected == 0:
+            continue
+        selected_qids = np.random.choice(sample_qids, \
+                                         size=nl_selected, replace=True, p=sample_label_qid_prob[label])
+        qid_counter = Counter(selected_qids)
+        for qid in qid_counter:
+            pos_label = 0
+            nq_selected = qid_counter[qid]
+            if nq_selected == 0:
                 continue
-            selected_qids = np.random.choice(sample_qids, \
-                                             size=nl_selected, replace=True, p=sample_label_qid_prob[label])
-            qid_counter = Counter(selected_qids)
-            for qid in qid_counter:
-                pos_label = 0
-                nq_selected = qid_counter[qid]
-                if nq_selected == 0:
-                    continue
-                for nl in reversed(range(label)):
-                    if nl in qid_label_cwids[qid]:
-                        pos_label = label
-                        neg_label = nl
-                        break
-                if pos_label != label:
-                    continue
-                pos_cwids = qid_label_cwids[qid][label]
-                neg_cwids = qid_label_cwids[qid][nl]
-                n_pos, n_neg = len(pos_cwids), len(neg_cwids)
-                idx_poses = np.random.choice(list(range(n_pos)), size=nq_selected, replace=True)
-                min_wlen = min(qid_wlen_cwid_mat[qid])
+            for nl in reversed(range(label)):
+                if nl in qid_label_cwids[qid]:
+                    pos_label = label
+                    neg_label = nl
+                    break
+            if pos_label != label:
+                continue
+            pos_cwids = qid_label_cwids[qid][label]
+            neg_cwids = qid_label_cwids[qid][nl]
+            n_pos, n_neg = len(pos_cwids), len(neg_cwids)
+            idx_poses = np.random.choice(list(range(n_pos)), size=nq_selected, replace=True)
+            min_wlen = min(qid_wlen_cwid_mat[qid])
+
+            for pi in idx_poses:
+                p_cwid = pos_cwids[pi]
+                pos_mats = get_doc_matrix(qid, p_cwid, doc_mat_dir, feature_names, n_grams, dim_sim, max_query_term, select_pos_func)
                 for wlen in qid_wlen_cwid_mat[qid]:
                     if wlen not in pos_batch:
                         pos_batch[wlen] = list()
-                    for pi in idx_poses:
-                        p_cwid = pos_cwids[pi]
-                        pos_batch[wlen].append(qid_wlen_cwid_mat[qid][wlen][p_cwid])
-                        if wlen == min_wlen:
-                            if context:
-                                pos_context_batch.append(qid_context[qid][p_cwid])
-                            ys.append(1)
-                for neg_ind in range(NUM_NEG):
-                    idx_negs = np.random.choice(list(range(n_neg)), size=nq_selected, replace=True)
-                    min_wlen = min(qid_wlen_cwid_mat[qid])
+
+                    pos_batch[wlen].append(pos_mats[wlen])
+                    if wlen == min_wlen:
+                        if context:
+                            pos_context_batch.append(qid_context[qid][p_cwid])
+                        ys.append(1)
+            for neg_ind in range(NUM_NEG):
+                idx_negs = np.random.choice(list(range(n_neg)), size=nq_selected, replace=True)
+                min_wlen = min(qid_wlen_cwid_mat[qid])
+                for ni in idx_negs:
+                    n_cwid = neg_cwids[ni]
+                    neg_mats = get_doc_matrix(qid, n_cwid, doc_mat_dir, feature_names, n_grams, dim_sim, max_query_term, select_pos_func)
                     for wlen in qid_wlen_cwid_mat[qid]:
                         if wlen not in neg_batch:
                             neg_batch[wlen] = dict()
@@ -375,43 +401,42 @@ def sample_train_data_weighted(qid_wlen_cwid_mat, qid_cwid_label, \
                             neg_batch[wlen][neg_ind] = list()
                             if wlen == min_wlen and context:
                                 neg_context_batch[neg_ind] = []
-                        for ni in idx_negs:
-                            n_cwid = neg_cwids[ni]
-                            neg_batch[wlen][neg_ind].append(qid_wlen_cwid_mat[qid][wlen][n_cwid])
-                            if wlen == min_wlen and context:
-                                neg_context_batch[neg_ind].append(qid_context[qid][n_cwid])
-                qidf_batch.append(query_idfs[qid].reshape((1, n_query_terms, 1)).repeat(nq_selected, axis=0))
-        total_train_num = len(ys)
-        if random_shuffle:
-            shuffled_index = np.random.permutation(list(range(total_train_num)))
-        else:
-            shuffled_index = list(range(total_train_num))
-        train_data = dict()
-        labels = np.array(ys)[shuffled_index]
 
-        getmat = lambda x: np.array(x)
+                        neg_batch[wlen][neg_ind].append(neg_mats[wlen])
+                        if wlen == min_wlen and context:
+                            neg_context_batch[neg_ind].append(qid_context[qid][n_cwid])
+            qidf_batch.append(query_idfs[qid].reshape((1, n_query_terms, 1)).repeat(nq_selected, axis=0))
+    total_train_num = len(ys)
+    if random_shuffle:
+        shuffled_index = np.random.permutation(list(range(total_train_num)))
+    else:
+        shuffled_index = list(range(total_train_num))
+    train_data = dict()
+    labels = np.array(ys)[shuffled_index]
 
-        for wlen in pos_batch:
-            train_data['pos_wlen_%d' % wlen] = getmat(pos_batch[wlen])[shuffled_index, :]
-            for neg_ind in range(NUM_NEG):
-                train_data['neg%d_wlen_%d' % (neg_ind, wlen)] = np.array(getmat(neg_batch[wlen][neg_ind]))[
-                                                                shuffled_index, :]
+    getmat = lambda x: np.array(x)
 
-        if binarysimm:
-            for k in train_data:
-                assert k.find("_wlen_") != -1, "data contains non-simmat objects"
-                train_data[k] = (train_data[k] >= 0.999).astype(np.int8)
+    for wlen in pos_batch:
+        train_data['pos_wlen_%d' % wlen] = getmat(pos_batch[wlen])[shuffled_index, :]
+        for neg_ind in range(NUM_NEG):
+            train_data['neg%d_wlen_%d' % (neg_ind, wlen)] = np.array(getmat(neg_batch[wlen][neg_ind]))[
+                                                            shuffled_index, :]
 
-        if context:
-            train_data['pos_context'] = np.array(pos_context_batch)[shuffled_index]
-            for neg_ind in range(NUM_NEG):
-                train_data['neg%d_context' % neg_ind] = np.array(neg_context_batch[neg_ind])[shuffled_index]
+    if binarysimm:
+        for k in train_data:
+            assert k.find("_wlen_") != -1, "data contains non-simmat objects"
+            train_data[k] = (train_data[k] >= 0.999).astype(np.int8)
 
-        train_data['query_idf'] = np.concatenate(qidf_batch, axis=0)[shuffled_index, :]
+    if context:
+        train_data['pos_context'] = np.array(pos_context_batch)[shuffled_index]
+        for neg_ind in range(NUM_NEG):
+            train_data['neg%d_context' % neg_ind] = np.array(neg_context_batch[neg_ind])[shuffled_index]
 
-        train_data['permute'] = np.array([[(bi, qi) for qi in np.random.permutation(n_query_terms)]
-                                          for bi in range(n_batch)], dtype=np.int)
-        yield (train_data, labels)
+    train_data['query_idf'] = np.concatenate(qidf_batch, axis=0)[shuffled_index, :]
+
+    train_data['permute'] = np.array([[(bi, qi) for qi in np.random.permutation(n_query_terms)]
+                                      for bi in range(n_batch)], dtype=np.int)
+    return (train_data, labels)
 
 
 def dump_modelplot(model, model_file):
