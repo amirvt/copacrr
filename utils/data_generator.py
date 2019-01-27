@@ -46,9 +46,11 @@ class MY_Generator(keras.utils.Sequence):
                 continue
             self.qid_label_cwids[qid] = dict()
             wlen_k = list(self.qid_wlen_cwid_mat[qid].keys())[0]
+            print(qid_cwid_label)
             for cwid in qid_cwid_label[qid]:
                 l = label2tlabel[qid_cwid_label[qid][cwid]]
                 if cwid not in self.qid_wlen_cwid_mat[qid][wlen_k]:
+                    print(cwid, self.qid_wlen_cwid_mat[qid][wlen_k])
                     logger.error('%s not in %d in self.qid_wlen_cwid_mat' % (cwid, qid))
                     continue
                 if l not in self.qid_label_cwids[qid]:
