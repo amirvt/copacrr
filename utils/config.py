@@ -57,7 +57,7 @@ rawdoc_mat_dir/query_idf/desc_term_idf/1
 rawdoc_mat_dir/query_idf/topic_term_idf/1
 '''
 # the directory helds the similarity matrices 
-sim_dir="/media/amir/My Passport"
+sim_dir="/media/amir/6B254F8510DE287D/Amir/data"
 rawdoc_mat_dir=os.path.join(sim_dir, 'cosine')
 #"/directory to the pre-computed similarity matrices/"
 # the mat for the context needs to be pre-computed if context=True
