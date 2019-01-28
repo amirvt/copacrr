@@ -103,7 +103,7 @@ def main(_log, _config):
                     label2tlabel=label2tlabel, sample_label_prob=sample_label_prob)
 
     history = built_model.fit_generator(train_data_generator, steps_per_epoch=steps_per_epoch, epochs=p['epochs'],
-                                        verbose=0, callbacks=[dump_weight], max_q_size=15, workers=1, pickle_safe=False)
+                                        verbose=1, callbacks=[dump_weight], max_q_size=15, workers=1, pickle_safe=False)
 
     epoch_train_loss = history.history['loss']
 

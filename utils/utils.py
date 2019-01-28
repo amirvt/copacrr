@@ -195,6 +195,7 @@ def convert_cwid_udim_simmat(qids, qid_cwid_rmat, select_pos_func, \
                 #                         mode='constant', constant_values=pad_value).astype(np.float32)
                 #         qid_cwid_mat[qid][n_gram][cwid] = (rmat[:, selected_inds], \
                 #                                            qermat[:, selected_inds])
+                qid_cwid_mat[qid][n_gram][cwid] = 1
                 #
                 #     if context:
                 #         qid_context[qid][cwid] = qid_context_raw[cwid][selected_inds]
@@ -240,11 +241,11 @@ def convert_cwid_udim_simmat(qids, qid_cwid_rmat, select_pos_func, \
                 #         qid_context[qid][cwid] = qid_context_raw[cwid]
                 #
                 # # hack so that we have the same shape as the sim matrices
-                # if context:
-                #     qid_context[qid][cwid] = np.array([qid_context[qid][cwid] for i in range(max_query_term)],
-                #                                       dtype=np.float32)
-                # else:
-                #     qid_context = None
+                if context:
+                    qid_context[qid][cwid] = np.array([qid_context[qid][cwid] for i in range(max_query_term)],
+                                                      dtype=np.float32)
+                else:
+                    qid_context = None
 
     return qid_cwid_mat, qid_ext_idfarr, qid_context
 
@@ -523,7 +524,7 @@ def load_train_data_generator(qids, rawdoc_mat_dir, qid_cwid_label, N_GRAMS, par
     #                                n_dims=SIM_DIM, n_batch=n_batch, random_shuffle=True, random_seed=rnd_seed,
     #                                qid_context=qid_context)
 
-    train_data_generator = MY_Generator(select_pos_func=select_pos_func, max_query_term=MAX_QUERY_LENGTH, n_grams=mat_ngrams,
+    train_data_generator = MY_Generator(batch_size=int(param_val['nsamples'] / param_val['batch']), select_pos_func=select_pos_func, max_query_term=MAX_QUERY_LENGTH, n_grams=mat_ngrams,
                                    doc_mat_dir=rawdoc_mat_dir, qid_wlen_cwid_mat=qid_wlen_cwid_mat,
                                    qid_cwid_label=qid_cwid_label, query_idfs=qid_ext_idfarr, sample_qids=qids, \
                                    binarysimm=binarysimm, label2tlabel=label2tlabel, \

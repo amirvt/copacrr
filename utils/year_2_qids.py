@@ -3,7 +3,7 @@ import os
 
 fold_names = ['fold01', 'fold02', 'fold03', 'fold04', 'fold05']
 
-query_range = list(range(301,450)) + list(range(601,700))
+query_range = list(range(430, 449))# + list(range(601,700))
 
 number_of_queries = len(query_range)
 
