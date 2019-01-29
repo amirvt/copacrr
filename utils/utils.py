@@ -26,11 +26,116 @@ class DumpWeight(Callback):
         self.model.save_weights(weight_file)
         logger.info('Callback dumped %s' % weight_name)
 
-
-
-
 def _load_doc_mat_desc(qids, qid_cwid_label, doc_mat_dir, qid_topic_idf, qid_desc_idf, usetopic, usedesc, maxqlen,
-                       feat_names=["sims"], h5fn=None):
+                       feature_names=["sims"] , h5fn=None):
+    assert usetopic or usedesc, "must use at least one of topic or desc"
+
+    h5fn = doc_mat_dir + '.hdf5'
+    h5 = None
+    if h5fn is not None:
+        if os.path.isfile(h5fn):
+            h5 = h5py.File(h5fn, 'r', libver='latest')
+
+    qid_cwid_simmat = dict()
+    qid_term_idf = dict()
+    for qid in sorted(qids):
+        if qid not in qid_cwid_label:
+            logger.error('%d not in qid_cwid_label' % qid)
+            continue
+        qid_cwid_simmat[qid] = dict()
+
+        topic_idf_arr, desc_idf_arr = qid_topic_idf[qid], qid_desc_idf[qid]
+        descmax = maxqlen
+        didxs = list(range(len(desc_idf_arr)))
+        mi = []
+        if usetopic:
+            assert len(topic_idf_arr) <= maxqlen, "maxqlen must be >= all topic lens"
+            descmax = maxqlen - len(topic_idf_arr)
+            mi.append(topic_idf_arr)
+        if usedesc:
+            if len(didxs) > descmax:
+                logger.warning("%s: desc len %s > desc max %s; removing low idf terms" % (qid, len(didxs), descmax))
+                didxs = np.sort(np.argsort(desc_idf_arr)[::-1][:descmax])
+                logger.info("%s -> %s" % (desc_idf_arr, desc_idf_arr[didxs]))
+            mi.append(desc_idf_arr[didxs])
+        qid_term_idf[qid] = np.concatenate(mi, axis=0).astype(np.float32)
+
+        if h5 is not None:
+            docmap_d = json.loads(h5['/desc/%s' % qid].attrs['docmap'])
+            docmap_t = json.loads(h5['/topic/%s' % qid].attrs['docmap'])
+
+        for cwid in qid_cwid_label[qid]:
+            topic_cwid_fs = [doc_mat_dir + '/topic_doc_mat/%s/%d/%s' % (fname,qid, cwid) for fname in feature_names]
+            desc_cwid_fs = [doc_mat_dir + '/desc_doc_mat/%s/%d/%s' % (fname, qid, cwid) for fname in feature_names]
+            topic_mat, desc_mat = np.empty((0, 0), dtype=np.float32), np.empty((0, 0), dtype=np.float32)
+            if h5 is not None and cwid not in docmap_t:
+                logger.error('topic %s not exist.' % cwid)
+            elif h5 is None and not os.path.isfile(topic_cwid_fs[0]):
+                logger.error('%s not exist.' % topic_cwid_fs[0])
+            elif usetopic:
+                if h5 is None:
+                    # topic_mat = np.load(topic_cwid_f)
+                    topic_mat = [np.genfromtxt(topic_cwid_f, delimiter=',')[:, :-1] for topic_cwid_f in topic_cwid_fs]
+                    for i in range(len(topic_mat)):
+                        topic_mat[i] = np.nan_to_num(topic_mat[i], 0)
+                else:
+                    topic_mat = np.vstack(h5['/topic/%s' % qid][docmap_t[cwid]])
+                if any(len(i.shape) != 2 for i in topic_mat):
+                    logger.warning('topic_mat {0} {1} {2}'.format(qid, cwid, topic_mat.shape))
+                    continue
+            if h5 is not None and cwid not in docmap_d:
+                logger.error('desc %s not exist.' % cwid)
+            # elif h5 is None and not os.path.isfile(desc_cwid_f):
+            #     logger.error('%s not exist.' % desc_cwid_f)
+            elif usedesc:
+                print(usedesc)
+                if h5 is None:
+                    # desc_mat = np.load(desc_cwid_f)[didxs]
+                    desc_mat = np.genfromtxt(desc_cwid_fs, delimiter=',')[:, :-1][didxs]
+                    desc_mat = np.nan_to_num(desc_mat, 0)
+                else:
+                    desc_mat = np.vstack(h5['/desc/%s' % qid][docmap_d[cwid]])[didxs]
+                if len(desc_mat.shape) != 2:
+                    logger.warning('desc_mat {0} {1} {2}'.format(qid, cwid, desc_mat.shape))
+                    continue
+            # if topic_mat.shape[1] == desc_mat.shape[1] and topic_mat.shape[1]>0:
+            # empty = True
+            # m = []
+            # if usetopic:
+            #     m.append(topic_mat)
+            #     if topic_mat.shape[1] > 0:
+            #         empty = False
+            # if usedesc:
+            #     m.append(desc_mat)
+            #     if desc_mat.shape[1] > 0:
+            #         empty = False
+            # if usetopic and usedesc and topic_mat.shape[1] != desc_mat.shape[1]:
+            #     empty = True
+
+            empty = False
+            shape = topic_mat[0].shape
+            for mat in topic_mat:
+                if mat.shape != shape or mat.shape[1] == 0:
+                    empty = True
+
+            if not empty:
+                # qid_cwid_simmat[qid][cwid] = np.concatenate(m, axis=0).astype(np.float32)
+                qid_cwid_simmat[qid][cwid] = np.array([mat for mat in topic_mat]).astype(np.float32)
+                qid_cwid_simmat[qid][cwid] = np.moveaxis(qid_cwid_simmat[qid][cwid], 0, -1)
+
+            else:
+                logger.error('dimension mismatch {0} {1} {2} {3}'.format(qid, cwid, topic_mat.shape, desc_mat.shape))
+
+    if h5 is not None:
+        h5.close()
+
+    return qid_cwid_simmat, qid_term_idf
+
+
+
+
+def _load_doc_mat_desc_modified(qids, qid_cwid_label, doc_mat_dir, qid_topic_idf, qid_desc_idf, usetopic, usedesc, maxqlen,
+                                feat_names=["sims"], h5fn=None):
     assert usetopic or usedesc, "must use at least one of topic or desc"
 
     h5fn = doc_mat_dir + '.hdf5'
@@ -151,10 +256,106 @@ def load_query_idf(qids, doc_mat_dir):
         qid_desc_idf[qid] = np.genfromtxt(idfdir_desc + '/%d' % qid, delimiter=',')[:-1]
     return qid_topic_idf, qid_desc_idf
 
-
 def convert_cwid_udim_simmat(qids, qid_cwid_rmat, select_pos_func, \
                              qid_term_idf, qid_cwid_qermat, \
                              dim_sim, max_query_term, n_grams, context):
+    qid_cwid_mat = dict()
+    qid_context = {}
+    qid_ext_idfarr = dict()
+    pad_value = 0
+    for qid in qids:
+        if qid not in qid_cwid_rmat:
+            logger.error('%d not in qid_cwid_rmat' % qid)
+            continue
+        if len(qid_cwid_rmat[qid]) == 0:
+            logger.error('%d includes 0 docs' % qid)
+            continue
+
+        qid_cwid_mat[qid] = dict()
+        if context:
+            qid_context_raw = {k: np.array(v, dtype=np.float32) for k, v in
+                               pickle.load(open('%s/%s.p' % (contextdir, qid), 'rb')).items()}
+            qid_context[qid] = {}
+        for cwid in qid_cwid_rmat[qid]:
+            len_doc = qid_cwid_rmat[qid][cwid].shape[1]
+            len_query = qid_cwid_rmat[qid][cwid].shape[0]
+            if qid not in qid_ext_idfarr:
+                qid_ext_idfarr[qid] = np.pad(qid_term_idf[qid], \
+                                             pad_width=((0, max_query_term - len_query)), \
+                                             mode='constant', constant_values=-np.inf)
+            for n_gram in n_grams:
+                if n_gram not in qid_cwid_mat[qid]:
+                    qid_cwid_mat[qid][n_gram] = dict()
+                if len_doc > dim_sim:
+                    rmat = np.pad(qid_cwid_rmat[qid][cwid], pad_width=((0, max_query_term - len_query), (0, 1), (0,0)),
+                                  mode='constant', constant_values=pad_value).astype(np.float32)
+                    selected_inds = select_pos_func(qid_cwid_rmat[qid][cwid], dim_sim, n_gram)
+
+                    if qid_cwid_qermat is None:
+                        qid_cwid_mat[qid][n_gram][cwid] = (rmat[:, selected_inds, :])
+                    else:
+                        qermat = np.pad(qid_cwid_qermat[qid][cwid], pad_width=((0, max_query_term - len_query), (0, 1)),
+                                        mode='constant', constant_values=pad_value).astype(np.float32)
+                        qid_cwid_mat[qid][n_gram][cwid] = (rmat[:, selected_inds], \
+                                                           qermat[:, selected_inds])
+
+                    if context:
+                        qid_context[qid][cwid] = qid_context_raw[cwid][selected_inds]
+                elif len_doc < dim_sim:
+                    if qid_cwid_qermat is None:
+                        qid_cwid_mat[qid][n_gram][cwid] = \
+                            (np.pad(qid_cwid_rmat[qid][cwid], \
+                                    pad_width=((0, max_query_term - len_query), \
+                                               (0, dim_sim - len_doc), (0,0)), mode='constant', \
+                                    constant_values=pad_value).astype(np.float32))
+                    else:
+                        qid_cwid_mat[qid][n_gram][cwid] = \
+                            (np.pad(qid_cwid_rmat[qid][cwid], \
+                                    pad_width=((0, max_query_term - len_query), \
+                                               (0, dim_sim - len_doc)), mode='constant', \
+                                    constant_values=pad_value).astype(np.float32), \
+                             np.pad(qid_cwid_qermat[qid][cwid], \
+                                    pad_width=((0, max_query_term - len_query), \
+                                               (0, dim_sim - len_doc)), mode='constant', \
+                                    constant_values=pad_value).astype(np.float32))
+
+                    if context:
+                        qid_context[qid][cwid] = np.pad(qid_context_raw[cwid],
+                                                        pad_width=((0, dim_sim - len_doc),),
+                                                        mode='constant', constant_values=pad_value)
+
+                else:
+                    if qid_cwid_qermat is None:
+                        qid_cwid_mat[qid][n_gram][cwid] = (np.pad(qid_cwid_rmat[qid][cwid], \
+                                                                  pad_width=((0, max_query_term - len_query), (0, 0), (0,0)), \
+                                                                  mode='constant', constant_values=pad_value).astype(
+                            np.float32))
+                    else:
+                        qid_cwid_mat[qid][n_gram][cwid] = (np.pad(qid_cwid_rmat[qid][cwid], \
+                                                                  pad_width=((0, max_query_term - len_query), (0, 0)), \
+                                                                  mode='constant', constant_values=pad_value).astype(
+                            np.float32), \
+                                                           np.pad(qid_cwid_qermat[qid][cwid], \
+                                                                  pad_width=((0, max_query_term - len_query), (0, 0)), \
+                                                                  mode='constant', constant_values=pad_value).astype(
+                                                               np.float32))
+                    if context:
+                        qid_context[qid][cwid] = qid_context_raw[cwid]
+
+                # hack so that we have the same shape as the sim matrices
+                if context:
+                    qid_context[qid][cwid] = np.array([qid_context[qid][cwid] for i in range(max_query_term)],
+                                                      dtype=np.float32)
+                else:
+                    qid_context = None
+
+    return qid_cwid_mat, qid_ext_idfarr, qid_context
+
+
+
+def convert_cwid_udim_simmat_modified(qids, qid_cwid_rmat, select_pos_func, \
+                                      qid_term_idf, qid_cwid_qermat, \
+                                      dim_sim, max_query_term, n_grams, context):
     qid_cwid_mat = dict()
     qid_context = {}
     qid_ext_idfarr = dict()
@@ -422,6 +623,7 @@ def load_test_data(qids, rawdoc_mat_dir, qid_cwid_label, N_GRAMS, param_val):
     MAX_QUERY_LENGTH = param_val['maxqlen']
     binarysimm = param_val['binmat']
     CONTEXT = param_val['context']
+    feat_names = param_val['feat_names'].split("_")
     if POS_METHOD == 'firstk':
         mat_ngrams = [max(N_GRAMS)]
     else:
@@ -430,15 +632,15 @@ def load_test_data(qids, rawdoc_mat_dir, qid_cwid_label, N_GRAMS, param_val):
     select_pos_func = getattr(select_doc_pos, 'select_pos_%s' % POS_METHOD)
     qid_topic_idf, qid_desc_idf = load_query_idf(qids, rawdoc_mat_dir)
     qid_cwid_rmat, qid_term_idf = _load_doc_mat_desc(qids, qid_cwid_label, rawdoc_mat_dir, qid_topic_idf, \
-                                                     qid_desc_idf, usetopic=param_val['ut'], usedesc=param_val['ud'],
-                                                     maxqlen=MAX_QUERY_LENGTH)
+                                                              qid_desc_idf, usetopic=param_val['ut'], usedesc=param_val['ud'],
+                                                              maxqlen=MAX_QUERY_LENGTH, feature_names=feat_names)
 
     qid_cwid_rqexpmat = None
     qid_cwid_mat, qid_ext_idfarr, qid_context = convert_cwid_udim_simmat(qids, qid_cwid_rmat, select_pos_func,
-                                                                         qid_term_idf, qid_cwid_rqexpmat,
-                                                                         dim_sim=SIM_DIM,
-                                                                         max_query_term=MAX_QUERY_LENGTH,
-                                                                         n_grams=mat_ngrams, context=CONTEXT)
+                                                                                  qid_term_idf, qid_cwid_rqexpmat,
+                                                                                  dim_sim=SIM_DIM,
+                                                                                  max_query_term=MAX_QUERY_LENGTH,
+                                                                                  n_grams=mat_ngrams, context=CONTEXT)
 
     doc_vec, q_idfs, cwids, testqids = dict(), list(), list(), list()
     contexts = []
@@ -507,15 +709,15 @@ def load_train_data_generator(qids, rawdoc_mat_dir, qid_cwid_label, N_GRAMS, par
 
     select_pos_func = getattr(select_doc_pos, 'select_pos_%s' % POS_METHOD)
     qid_topic_idf, qid_desc_idf = load_query_idf(qids, rawdoc_mat_dir)
-    qid_cwid_rmat, qid_term_idf = _load_doc_mat_desc(qids, qid_cwid_label, rawdoc_mat_dir, qid_topic_idf, qid_desc_idf,
-                                                     usetopic=param_val['ut'], usedesc=param_val['ud'],
-                                                     maxqlen=MAX_QUERY_LENGTH, feat_names=feat_names)
+    qid_cwid_rmat, qid_term_idf = _load_doc_mat_desc_modified(qids, qid_cwid_label, rawdoc_mat_dir, qid_topic_idf, qid_desc_idf,
+                                                              usetopic=param_val['ut'], usedesc=param_val['ud'],
+                                                              maxqlen=MAX_QUERY_LENGTH, feat_names=feat_names)
     qid_cwid_rqexpmat = None
-    qid_wlen_cwid_mat, qid_ext_idfarr, qid_context = convert_cwid_udim_simmat(qids, qid_cwid_rmat, select_pos_func,
-                                                                              qid_term_idf, qid_cwid_rqexpmat, \
-                                                                              dim_sim=SIM_DIM,
-                                                                              max_query_term=MAX_QUERY_LENGTH,
-                                                                              n_grams=mat_ngrams, context=CONTEXT)
+    qid_wlen_cwid_mat, qid_ext_idfarr, qid_context = convert_cwid_udim_simmat_modified(qids, qid_cwid_rmat, select_pos_func,
+                                                                                       qid_term_idf, qid_cwid_rqexpmat, \
+                                                                                       dim_sim=SIM_DIM,
+                                                                                       max_query_term=MAX_QUERY_LENGTH,
+                                                                                       n_grams=mat_ngrams, context=CONTEXT)
     # train_data_generator = \
     #     sample_train_data_weighted(qid_wlen_cwid_mat, qid_cwid_label, qid_ext_idfarr, qids, \
     #                                binarysimm=binarysimm, label2tlabel=label2tlabel, \

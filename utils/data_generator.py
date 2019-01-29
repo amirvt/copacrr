@@ -140,6 +140,7 @@ class MY_Generator(keras.utils.Sequence):
         ys = list()
         # print('8888888888')
         # print([self.sample_label_prob[l] for l in sorted(self.sample_label_prob)])
+        print(self.sample_label_prob)
         selected_labels = np.random.choice([l for l in sorted(self.sample_label_prob)],
                                            size=self.n_batch, replace=True,
                                            p=[self.sample_label_prob[l] for l in sorted(self.sample_label_prob)])
