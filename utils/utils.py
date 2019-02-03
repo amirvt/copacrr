@@ -75,9 +75,15 @@ def _load_doc_mat_desc(qids, qid_cwid_label, doc_mat_dir, qid_topic_idf, qid_des
             elif usetopic:
                 if h5 is None:
                     # topic_mat = np.load(topic_cwid_f)
-                    topic_mat = [np.genfromtxt(topic_cwid_f, delimiter=',')[:, :-1] for topic_cwid_f in topic_cwid_fs]
+                    # topic_mat = [np.genfromtxt(topic_cwid_f, delimiter=',')[:, :-1] for topic_cwid_f in topic_cwid_fs]
+                    topic_mat = [np.load(topic_cwid_f).astype(np.float32) for topic_cwid_f in topic_cwid_fs]
                     for i in range(len(topic_mat)):
+                        if len(topic_mat[i].shape) == 1:
+                            topic_mat[i] = np.expand_dims(topic_mat[i], axis=0)[:, :-1]
+                        else:
+                            topic_mat[i] = topic_mat[i][:, :-1]
                         topic_mat[i] = np.nan_to_num(topic_mat[i], 0)
+
                 else:
                     topic_mat = np.vstack(h5['/topic/%s' % qid][docmap_t[cwid]])
                 if any(len(i.shape) != 2 for i in topic_mat):
@@ -133,8 +139,9 @@ def _load_doc_mat_desc(qids, qid_cwid_label, doc_mat_dir, qid_topic_idf, qid_des
 
 
 
+
 def _load_doc_mat_desc_modified(qids, qid_cwid_label, doc_mat_dir, qid_topic_idf, qid_desc_idf, usetopic, usedesc, maxqlen,
-                                feature_names=["sims"], h5fn=None):
+                                feat_names=["sims"], h5fn=None):
     assert usetopic or usedesc, "must use at least one of topic or desc"
 
     h5fn = doc_mat_dir + '.hdf5'
@@ -172,8 +179,8 @@ def _load_doc_mat_desc_modified(qids, qid_cwid_label, doc_mat_dir, qid_topic_idf
             docmap_t = json.loads(h5['/topic/%s' % qid].attrs['docmap'])
 
         for cwid in qid_cwid_label[qid]:
-            topic_cwid_fs = [doc_mat_dir + '/topic_doc_mat/%s/%d/%s' % (fname,qid, cwid) for fname in feature_names]
-            desc_cwid_fs = [doc_mat_dir + '/desc_doc_mat/%s/%d/%s' % (fname, qid, cwid) for fname in feature_names]
+            topic_cwid_fs = [doc_mat_dir + '/topic_doc_mat/%s/%d/%s' % (fname,qid, cwid) for fname in feat_names]
+            desc_cwid_fs = [doc_mat_dir + '/desc_doc_mat/%s/%d/%s' % (fname, qid, cwid) for fname in feat_names]
             topic_mat, desc_mat = np.empty((0, 0), dtype=np.float32), np.empty((0, 0), dtype=np.float32)
             # if h5 is not None and cwid not in docmap_t:
             #     logger.error('topic %s not exist.' % cwid)
@@ -395,6 +402,7 @@ def convert_cwid_udim_simmat_modified(qids, qid_cwid_rmat, select_pos_func, \
                 #                         mode='constant', constant_values=pad_value).astype(np.float32)
                 #         qid_cwid_mat[qid][n_gram][cwid] = (rmat[:, selected_inds], \
                 #                                            qermat[:, selected_inds])
+                qid_cwid_mat[qid][n_gram][cwid] = 1
                 #
                 #     if context:
                 #         qid_context[qid][cwid] = qid_context_raw[cwid][selected_inds]
@@ -440,11 +448,11 @@ def convert_cwid_udim_simmat_modified(qids, qid_cwid_rmat, select_pos_func, \
                 #         qid_context[qid][cwid] = qid_context_raw[cwid]
                 #
                 # # hack so that we have the same shape as the sim matrices
-                # if context:
-                #     qid_context[qid][cwid] = np.array([qid_context[qid][cwid] for i in range(max_query_term)],
-                #                                       dtype=np.float32)
-                # else:
-                #     qid_context = None
+                if context:
+                    qid_context[qid][cwid] = np.array([qid_context[qid][cwid] for i in range(max_query_term)],
+                                                      dtype=np.float32)
+                else:
+                    qid_context = None
 
     return qid_cwid_mat, qid_ext_idfarr, qid_context
 
@@ -724,12 +732,12 @@ def load_train_data_generator(qids, rawdoc_mat_dir, qid_cwid_label, N_GRAMS, par
     #                                n_dims=SIM_DIM, n_batch=n_batch, random_shuffle=True, random_seed=rnd_seed,
     #                                qid_context=qid_context)
 
-    train_data_generator = MY_Generator(select_pos_func=select_pos_func, max_query_term=MAX_QUERY_LENGTH, n_grams=mat_ngrams,
+    train_data_generator = MY_Generator(batch_size=int(param_val['nsamples'] / param_val['batch']), select_pos_func=select_pos_func, max_query_term=MAX_QUERY_LENGTH, n_grams=mat_ngrams,
                                    doc_mat_dir=rawdoc_mat_dir, qid_wlen_cwid_mat=qid_wlen_cwid_mat,
-                                   qid_cwid_label=qid_cwid_label, qid_ext_idfarr=qid_ext_idfarr, qids=qids, \
+                                   qid_cwid_label=qid_cwid_label, query_idfs=qid_ext_idfarr, sample_qids=qids, \
                                    binarysimm=binarysimm, label2tlabel=label2tlabel, \
                                    sample_label_prob=sample_label_prob, \
                                    n_query_terms=MAX_QUERY_LENGTH, NUM_NEG=NUM_NEG, \
                                    n_dims=SIM_DIM, n_batch=n_batch, random_shuffle=True, random_seed=rnd_seed,
-                                   qid_context=qid_context, feat_names=feat_names, dim_sim=SIM_DIM)
+                                   qid_context=qid_context, feature_names=feat_names, dim_sim=SIM_DIM)
     return train_data_generator

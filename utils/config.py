@@ -57,7 +57,7 @@ rawdoc_mat_dir/query_idf/desc_term_idf/1
 rawdoc_mat_dir/query_idf/topic_term_idf/1
 '''
 # the directory helds the similarity matrices 
-sim_dir="/home/amir/PycharmProjects/copacrr"
+sim_dir="/media/amir/My Passport"
 rawdoc_mat_dir=os.path.join(sim_dir, 'cosine')
 #"/directory to the pre-computed similarity matrices/"
 # the mat for the context needs to be pre-computed if context=True
@@ -96,7 +96,7 @@ def default_params():
     kmaxpool = 3 # top k for max pooling
     combine = 32 # type of combination layer to use. 0 for an LSTM, otherwise the number of feedforward layer dimensions
     qproximity = 0 # additional NxN proximity filter to include (0 to disable)
-    context = True # include match contexts? (boolean)
+    context = False # include match contexts? (boolean)
     shuffle = True # shuffle input to the combination layer? (i.e., LSTM or feedforward layer)
 
     ek = 10 # topk expansion terms to use when enhance=qexpand or enhance=both
