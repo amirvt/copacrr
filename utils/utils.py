@@ -38,7 +38,7 @@ def _load_doc_mat_desc(qids, qid_cwid_label, doc_mat_dir, qid_topic_idf, qid_des
 
     qid_cwid_simmat = dict()
     qid_term_idf = dict()
-    print('############', qids)
+
     for qid in sorted(qids):
         if qid not in qid_cwid_label:
             logger.error('%d not in qid_cwid_label' % qid)
@@ -78,7 +78,7 @@ def _load_doc_mat_desc(qids, qid_cwid_label, doc_mat_dir, qid_topic_idf, qid_des
                     # topic_mat = np.load(topic_cwid_f)
                     # topic_mat = [np.genfromtxt(topic_cwid_f, delimiter=',')[:, :-1] for topic_cwid_f in topic_cwid_fs]
                     topic_mat = [np.load(topic_cwid_f).astype(np.float32) for topic_cwid_f in topic_cwid_fs]
-                    print('1111111111111111', len(topic_mat))
+
                     for i in range(len(topic_mat)):
                         if len(topic_mat[i].shape) == 1:
                             topic_mat[i] = np.expand_dims(topic_mat[i], axis=0)[:, :-1]
@@ -96,7 +96,6 @@ def _load_doc_mat_desc(qids, qid_cwid_label, doc_mat_dir, qid_topic_idf, qid_des
             # elif h5 is None and not os.path.isfile(desc_cwid_f):
             #     logger.error('%s not exist.' % desc_cwid_f)
             elif usedesc:
-                print(usedesc)
                 if h5 is None:
                     # desc_mat = np.load(desc_cwid_f)[didxs]
                     desc_mat = np.genfromtxt(desc_cwid_fs, delimiter=',')[:, :-1][didxs]
