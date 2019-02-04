@@ -79,7 +79,7 @@ def eval_run(_log, qid_cwid_pred, expid, perlf, treceval, tmp_dir, k, qrelf):
 
 
 def print_run(qid_cwid_pred, outdir, outfname, run_id):
-    with open(os.path.join(outdir, outfname), 'w') as f:
+    with open(os.path.join(outdir, outfname), 'a') as f:
         for qid in sorted(qid_cwid_pred):
             rank = 1
             for cwid in sorted(qid_cwid_pred[qid], key=lambda d:-qid_cwid_pred[qid][d]):
@@ -128,70 +128,78 @@ def pred(_log, _config):
     _log.info('{0} {1} {2} {3} {4}'.format(p['distill'], 'NGRAM_NFILTER', NGRAM_NFILTER, 'N_GRAMS', N_GRAMS))
 
     # prepare train data
-    qids = get_train_qids(p['test_year'])
+    qids_all = get_train_qids(p['test_year'])
     qrelf = get_qrelf(qrelfdir, p['test_year'])
-    qid_cwid_label = read_qrel(qrelf, qids, include_spam=False)
-    test_qids =[qid for qid in qids if qid in qid_cwid_label]
-    _log.info('%s test_num %d '%(p['test_year'], len(test_qids)))
+    epoch_err_ndcg_loss_list = list()
+    for qids in qids_all:
+        qids = [qids]
+        qid_cwid_label = read_qrel(qrelf, qids, include_spam=False)
+        test_qids =[qid for qid in qids if qid in qid_cwid_label]
+        _log.info('%s test_num %d '%(p['test_year'], len(test_qids)))
 
-    f_ndcg=dict()
-    f_epochs = set()
-    # sort weights by time and only use the first weights for each epoch
-    # (in case there are duplicate weights from a failed/re-run train)
-    for f in sorted(os.listdir(weight_dir),
-                    key=lambda x: os.path.getctime(os.path.join(weight_dir, x))):
-        if f.split('.')[-1] != 'h5':
-            continue
-        cols = f.split('.')[0].split('_')
-        if len(cols) == 4:
-            nb_epoch, loss, n_batch, n_samples = int(cols[0]), int(cols[1]), int(cols[2]), int(cols[3])
-            if nb_epoch <= p['epochs'] and nb_epoch not in f_epochs:
-                f_epochs.add(nb_epoch)
-                f_ndcg[f]=(nb_epoch, loss, n_batch, n_samples)
+        f_ndcg=dict()
+        f_epochs = set()
+        # sort weights by time and only use the first weights for each epoch
+        # (in case there are duplicate weights from a failed/re-run train)
+        for f in sorted(os.listdir(weight_dir),
+                        key=lambda x: os.path.getctime(os.path.join(weight_dir, x))):
+            if f.split('.')[-1] != 'h5':
+                continue
+            cols = f.split('.')[0].split('_')
+            if len(cols) == 4:
+                nb_epoch, loss, n_batch, n_samples = int(cols[0]), int(cols[1]), int(cols[2]), int(cols[3])
+                if nb_epoch <= p['epochs'] and nb_epoch not in f_epochs:
+                    f_epochs.add(nb_epoch)
+                    f_ndcg[f]=(nb_epoch, loss, n_batch, n_samples)
 
 
-    finished_epochs = {}
-    for fn in sorted(os.listdir(outdir_run),
-                     key=lambda x: os.path.getctime(os.path.join(outdir_run, x))):
-        if fn.endswith(".run"):
-            fields = fn[:-4].split("_") # trim .run
-            assert len(fields) == 5
-            
-            epoch, loss = int(fields[0]), int(fields[4])
-            ndcg, mapv, err = float(fields[1]), float(fields[2]), float(fields[3])
+        finished_epochs = {}
+        for fn in sorted(os.listdir(outdir_run),
+                         key=lambda x: os.path.getctime(os.path.join(outdir_run, x))):
+            if fn.endswith(".run"):
+                fields = fn[:-4].split("_") # trim .run
+                assert len(fields) == 5
 
-            #assert epoch not in finished_epochs
-            if epoch in finished_epochs:
-                _log.error("TODO two weights exist for same epoch")
-            finished_epochs[epoch] = (epoch, err, ndcg, mapv, loss)
-                            
-    _log.info('skipping finished epochs: {0}'.format(finished_epochs))
+                epoch, loss = int(fields[0]), int(fields[4])
+                ndcg, mapv, err = float(fields[1]), float(fields[2]), float(fields[3])
 
-    def model_pred(NGRAM_NFILTER, weight_file, test_data, test_docids, test_qids):
-        dump_modelplot(model.build(), detail_outdir + 'predplot_' + expid)
-        model_predict = model.build_from_dump(weight_file)
-        qid_cwid_pred = pred_label(model_predict, test_data, test_docids, test_qids)
-        return qid_cwid_pred
+                #assert epoch not in finished_epochs
+                if epoch in finished_epochs:
+                    _log.error("TODO two weights exist for same epoch")
+                finished_epochs[epoch] = (epoch, err, ndcg, mapv, loss)
 
-    test_doc_vec, test_docids, test_qids=load_test_data(qids, rawdoc_mat_dir, qid_cwid_label, N_GRAMS, p)
-    epoch_err_ndcg_loss=list()
-    _log.info('start {0} {1} {2}'.format(expid, p['train_years'], p['test_year']))
-    for f in sorted(f_ndcg, key=lambda x:f_ndcg[x][0]):
-        nb_epoch, loss, n_batch, n_samples = f_ndcg[f]
-        if nb_epoch in finished_epochs:
-            epoch_err_ndcg_loss.append(finished_epochs[nb_epoch])
-            continue
-        weight_file = os.path.join(weight_dir, f)
-        qid_cwid_pred = model_pred(NGRAM_NFILTER, weight_file, test_doc_vec, test_docids, test_qids)
-        ndcg20, err20, mapv = eval_run(_log, qid_cwid_pred, expid, perlf, treceval, tmp_dir, topk4eval, qrelf)
-        loss = int(loss)
-        out_name = '%d_%0.4f_%0.4f_%0.4f_%d.run' % (nb_epoch, ndcg20, mapv, err20, loss)
-        epoch_err_ndcg_loss.append((nb_epoch, err20, ndcg20, mapv, loss))
-        print_run(qid_cwid_pred, outdir_run, out_name, expid)
-        _log.info('finished {0}'.format(f))
-    _log.info('finish {0} {1} {2}'.format(expid, p['train_years'], p['test_year']))
+        _log.info('skipping finished epochs: {0}'.format(finished_epochs))
 
-    plot_curve(epoch_err_ndcg_loss, outdir_plot, expid, p)
+        def model_pred(NGRAM_NFILTER, weight_file, test_data, test_docids, test_qids):
+            dump_modelplot(model.build(), detail_outdir + 'predplot_' + expid)
+            model_predict = model.build_from_dump(weight_file)
+            qid_cwid_pred = pred_label(model_predict, test_data, test_docids, test_qids)
+            return qid_cwid_pred
 
-    if max(f_epochs) < p['epochs'] - 3:
-        raise SoftFailure("prediction finished, but not all epochs are available yet. last epoch found: %s" % max(f_epochs))
+        test_doc_vec, test_docids, test_qids=load_test_data(qids, rawdoc_mat_dir, qid_cwid_label, N_GRAMS, p)
+        epoch_err_ndcg_loss=list()
+        _log.info('start {0} {1} {2}'.format(expid, p['train_years'], p['test_year']))
+        for f in sorted(f_ndcg, key=lambda x:f_ndcg[x][0]):
+            nb_epoch, loss, n_batch, n_samples = f_ndcg[f]
+            if nb_epoch in finished_epochs:
+                epoch_err_ndcg_loss.append(finished_epochs[nb_epoch])
+                continue
+            weight_file = os.path.join(weight_dir, f)
+            qid_cwid_pred = model_pred(NGRAM_NFILTER, weight_file, test_doc_vec, test_docids, test_qids)
+            ndcg20, err20, mapv = eval_run(_log, qid_cwid_pred, expid, perlf, treceval, tmp_dir, topk4eval, qrelf)
+            loss = int(loss)
+            # out_name = '%d_%0.4f_%0.4f_%0.4f_%d.run' % (nb_epoch, ndcg20, mapv, err20, loss)
+            out_name = '%d.run' % nb_epoch
+            epoch_err_ndcg_loss.append((nb_epoch, err20, ndcg20, mapv, loss))
+            print_run(qid_cwid_pred, outdir_run, out_name, expid)
+            _log.info('finished {0}'.format(f))
+
+        _log.info('finish {0} {1} {2}'.format(expid, p['train_years'], p['test_year']))
+        epoch_err_ndcg_loss_list.append(epoch_err_ndcg_loss)
+
+
+        if max(f_epochs) < p['epochs'] - 3:
+            raise SoftFailure("prediction finished, but not all epochs are available yet. last epoch found: %s" % max(f_epochs))
+
+    epoch_err_ndcg_loss_final = np.array(epoch_err_ndcg_loss_list).sum(0).tolist()
+    plot_curve(epoch_err_ndcg_loss_final, outdir_plot, expid, p)

@@ -38,6 +38,7 @@ def _load_doc_mat_desc(qids, qid_cwid_label, doc_mat_dir, qid_topic_idf, qid_des
 
     qid_cwid_simmat = dict()
     qid_term_idf = dict()
+    print('############', qids)
     for qid in sorted(qids):
         if qid not in qid_cwid_label:
             logger.error('%d not in qid_cwid_label' % qid)
@@ -65,18 +66,19 @@ def _load_doc_mat_desc(qids, qid_cwid_label, doc_mat_dir, qid_topic_idf, qid_des
             docmap_t = json.loads(h5['/topic/%s' % qid].attrs['docmap'])
 
         for cwid in qid_cwid_label[qid]:
-            topic_cwid_fs = [doc_mat_dir + '/topic_doc_mat/%s/%d/%s' % (fname,qid, cwid) for fname in feature_names]
-            desc_cwid_fs = [doc_mat_dir + '/desc_doc_mat/%s/%d/%s' % (fname, qid, cwid) for fname in feature_names]
+            topic_cwid_fs = [doc_mat_dir + '/topic_doc_mat/%s/%d/%s.npy' % (fname,qid, cwid) for fname in feature_names]
+            desc_cwid_fs = [doc_mat_dir + '/desc_doc_mat/%s/%d/%s.npy' % (fname, qid, cwid) for fname in feature_names]
             topic_mat, desc_mat = np.empty((0, 0), dtype=np.float32), np.empty((0, 0), dtype=np.float32)
             if h5 is not None and cwid not in docmap_t:
                 logger.error('topic %s not exist.' % cwid)
-            elif h5 is None and not os.path.isfile(topic_cwid_fs[0] + '.npy'):
+            elif h5 is None and not os.path.isfile(topic_cwid_fs[0]):
                 logger.error('%s not exist.' % topic_cwid_fs[0])
             elif usetopic:
                 if h5 is None:
                     # topic_mat = np.load(topic_cwid_f)
                     # topic_mat = [np.genfromtxt(topic_cwid_f, delimiter=',')[:, :-1] for topic_cwid_f in topic_cwid_fs]
-                    topic_mat = [np.load(topic_cwid_f + '.npy').astype(np.float32) for topic_cwid_f in topic_cwid_fs]
+                    topic_mat = [np.load(topic_cwid_f).astype(np.float32) for topic_cwid_f in topic_cwid_fs]
+                    print('1111111111111111', len(topic_mat))
                     for i in range(len(topic_mat)):
                         if len(topic_mat[i].shape) == 1:
                             topic_mat[i] = np.expand_dims(topic_mat[i], axis=0)[:, :-1]
