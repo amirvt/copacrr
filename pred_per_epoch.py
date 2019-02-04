@@ -154,21 +154,21 @@ def pred(_log, _config):
 
 
         finished_epochs = {}
-        for fn in sorted(os.listdir(outdir_run),
-                         key=lambda x: os.path.getctime(os.path.join(outdir_run, x))):
-            if fn.endswith(".run"):
-                fields = fn[:-4].split("_") # trim .run
-                assert len(fields) == 5
+        # for fn in sorted(os.listdir(outdir_run),
+        #                  key=lambda x: os.path.getctime(os.path.join(outdir_run, x))):
+        #     if fn.endswith(".run"):
+        #         fields = fn[:-4].split("_") # trim .run
+        #         assert len(fields) == 5
+        #
+        #         epoch, loss = int(fields[0]), int(fields[4])
+        #         ndcg, mapv, err = float(fields[1]), float(fields[2]), float(fields[3])
+        #
+        #         #assert epoch not in finished_epochs
+        #         if epoch in finished_epochs:
+        #             _log.error("TODO two weights exist for same epoch")
+        #         finished_epochs[epoch] = (epoch, err, ndcg, mapv, loss)
 
-                epoch, loss = int(fields[0]), int(fields[4])
-                ndcg, mapv, err = float(fields[1]), float(fields[2]), float(fields[3])
-
-                #assert epoch not in finished_epochs
-                if epoch in finished_epochs:
-                    _log.error("TODO two weights exist for same epoch")
-                finished_epochs[epoch] = (epoch, err, ndcg, mapv, loss)
-
-        _log.info('skipping finished epochs: {0}'.format(finished_epochs))
+        # _log.info('skipping finished epochs: {0}'.format(finished_epochs))
 
         def model_pred(NGRAM_NFILTER, weight_file, test_data, test_docids, test_qids):
             dump_modelplot(model.build(), detail_outdir + 'predplot_' + expid)

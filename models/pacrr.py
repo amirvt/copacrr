@@ -118,7 +118,7 @@ class PACRR(MODEL_BASE):
                     else:
                         if dim_name == '1x1':
 
-                            print('//////////////')
+
                             features = single_feature(re_doc_cov)
                             for i in range(p['nomfeat']):
                                 ng_signal = pool_sdim_layer[dim_name](features)
