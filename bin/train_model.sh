@@ -33,8 +33,8 @@ python3 -m train_model with\
 	epochs=$iterations \
 	outdir=$outdir \
 	ud=False \
-	nomfeat=2 \
-	feat_names=sims_mis
+	nomfeat=1 \
+	feat_names=sims
 END=$(date +%s.%N)
 DIFF=$(echo "$END - $START" | bc)
 echo $id finished within $DIFF

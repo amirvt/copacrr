@@ -70,13 +70,13 @@ def _load_doc_mat_desc(qids, qid_cwid_label, doc_mat_dir, qid_topic_idf, qid_des
             topic_mat, desc_mat = np.empty((0, 0), dtype=np.float32), np.empty((0, 0), dtype=np.float32)
             if h5 is not None and cwid not in docmap_t:
                 logger.error('topic %s not exist.' % cwid)
-            elif h5 is None and not os.path.isfile(topic_cwid_fs[0]):
+            elif h5 is None and not os.path.isfile(topic_cwid_fs[0] + '.npy'):
                 logger.error('%s not exist.' % topic_cwid_fs[0])
             elif usetopic:
                 if h5 is None:
                     # topic_mat = np.load(topic_cwid_f)
                     # topic_mat = [np.genfromtxt(topic_cwid_f, delimiter=',')[:, :-1] for topic_cwid_f in topic_cwid_fs]
-                    topic_mat = [np.load(topic_cwid_f).astype(np.float32) for topic_cwid_f in topic_cwid_fs]
+                    topic_mat = [np.load(topic_cwid_f + '.npy').astype(np.float32) for topic_cwid_f in topic_cwid_fs]
                     for i in range(len(topic_mat)):
                         if len(topic_mat[i].shape) == 1:
                             topic_mat[i] = np.expand_dims(topic_mat[i], axis=0)[:, :-1]

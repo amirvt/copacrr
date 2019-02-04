@@ -121,7 +121,7 @@ class PACRR(MODEL_BASE):
                             print('//////////////')
                             features = single_feature(re_doc_cov)
                             for i in range(p['nomfeat']):
-                                ng_signal = pool_sdim_layer[dim_name](features[i])
+                                ng_signal = pool_sdim_layer[dim_name](features)
                                 doc_qts_scores.append(ng_signal)
                         else:
                             ng_signal = pool_sdim_layer[dim_name](re_doc_cov)

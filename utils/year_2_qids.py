@@ -3,7 +3,7 @@ import os
 
 fold_names = ['fold01', 'fold02', 'fold03', 'fold04', 'fold05']
 
-query_range = list(range(430,449))# + list(range(601,700))
+query_range = list(range(301, 450)) + list(range(601, 700))
 
 number_of_queries = len(query_range)
 
@@ -28,6 +28,7 @@ def get_train_qids(fold, years=fold_names[:-1]):
     elif fold.startswith('fold'):
         prefix = 'fold'
     a_qids = list()
+    print('####', years)
     for y in fold[len(prefix):].split('_'):
         a_qids.extend(year_qids['%s%s' % (prefix, y)])
     return a_qids

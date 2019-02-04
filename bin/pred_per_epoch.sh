@@ -6,8 +6,8 @@ source $CUR_DIR/set_env.sh
 START=$(date +%s.%N)
 
 expname=pacrrpub
-#train_years=wt09_10_11_12
-#test_year=wt14
+#train_years=fold01_02_03
+#test_year=fold_04
 numneg=6
 batch=32
 winlen=3
@@ -17,7 +17,7 @@ context=False
 combine=16
 iterations=10
 shuffle=False
-#parentdir=~/playground/copacrr/out
+parentdir=/home/amir/PycharmProjects/copacrr/out
 outdir=$parentdir
 
 

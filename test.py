@@ -7,8 +7,8 @@ from tqdm import tqdm
 import shutil
 
 
-input_dir = "/media/vandermonde/3D839297453A43E7/data"
-output_dir = "/media/vandermonde/3D839297453A43E7/binary_run/run0/data"
+input_dir = "/media/amir/6B254F8510DE287D/Amir/data/cosine/old"
+output_dir = "/media/amir/6B254F8510DE287D/Amir/data/cosine/old_bin"
 
 
 

@@ -4,10 +4,10 @@ import itertools
 import os
 import sys
 import time
-all_years = ['09', '10', '11', '12', '13', '14']
+all_years = ['01', '02', '03', '04', '05']
 #train_test_years = {'wt12_13':['wt11', 'wt14']}
-train_test_years = {'wt' + '_'.join(sorted(years)):
-        sorted(['wt' + ty for ty in all_years if ty not in years])
+train_test_years = {
+    'wt' + '_'.join(sorted(years)): sorted(['fold' + ty for ty in all_years if ty not in years])
         for years in itertools.combinations(all_years, 4)}
 
 
@@ -57,7 +57,7 @@ rawdoc_mat_dir/query_idf/desc_term_idf/1
 rawdoc_mat_dir/query_idf/topic_term_idf/1
 '''
 # the directory helds the similarity matrices 
-sim_dir="/media/amir/My Passport"
+sim_dir="/media/amir/6B254F8510DE287D/Amir/data"
 rawdoc_mat_dir=os.path.join(sim_dir, 'cosine')
 #"/directory to the pre-computed similarity matrices/"
 # the mat for the context needs to be pre-computed if context=True
@@ -124,5 +124,5 @@ def default_params():
     if 'debug' in expname:
         epochs = 5
 
-    nomfeat = 2
-    feat_names = 'sims_mis'
+    nomfeat = 1
+    feat_names = 'sim'

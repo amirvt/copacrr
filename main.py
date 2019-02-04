@@ -47,9 +47,9 @@ train_test_years = \
         'fold01_04_05': ['fold02', 'fold03'],
         'fold02_03_04': ['fold01', 'fold05'],
 
-        'fold02_03_05': ['fold1', 'fold04'],
-        'fold02_04_05': ['fold1', 'fold03'],
-        'fold03_04_05': ['fold1', 'fold02']
+        'fold02_03_05': ['fold01', 'fold04'],
+        'fold02_04_05': ['fold01', 'fold03'],
+        'fold03_04_05': ['fold01', 'fold02']
     }
 
 
@@ -59,17 +59,17 @@ for train_years, (valid_year, test_year) in train_test_years.items():
     os.environ['train_years'] = train_years
     os.environ['test_year'] = test_year
     os.environ['valid_years'] = valid_year
+    # print('*******')
+    # print('trains_years=', train_years)
+    # print('*******')
+    # process = subprocess.Popen(['bash', './bin/train_model.sh'], env=dict(os.environ, train_years=train_years))
+    # process.wait()
     print('*******')
     print('trains_years=', train_years)
+    print('test_year=', test_year)
     print('*******')
-    process = subprocess.Popen(['bash', './bin/train_model.sh'], env=dict(os.environ, train_years=train_years))
+    process = subprocess.Popen(['bash', './bin/pred_per_epoch.sh'], env=dict(os.environ, train_years=train_years, test_year=test_year))
     process.wait()
-    print('*******')
-    # print('trains_years=', train_years)
-    # print('test_year=', test_year)
-    # print('*******')
-    # process = subprocess.Popen(['bash', './bin/pred_per_epoch.sh'], env=dict(os.environ, train_years=train_years, test_year=test_year))
-    # process.wait()
     # print('*******')
     # print('trains_years=', train_years)
     # print('test_year=', valid_year)
