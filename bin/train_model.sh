@@ -4,6 +4,8 @@ source $CUR_DIR/set_env.sh
 
 START=$(date +%s.%N)
 
+export CUDA_VISIBLE_DEVICES=''
+
 expname=pacrrpub
 #train_years=wt09_10_12_13
 numneg=6
@@ -17,6 +19,7 @@ iterations=10
 shuffle=False
 #parentdir=~/playground/copacrr/out
 outdir=$parentdir
+nfilter=128
 
 python3 -m train_model with\
 	expname=$expname \
@@ -34,7 +37,8 @@ python3 -m train_model with\
 	outdir=$outdir \
 	ud=False \
 	nomfeat=1 \
-	feat_names=sims
+	featnames='sims' \
+	nfilter=$nfilter
 END=$(date +%s.%N)
 DIFF=$(echo "$END - $START" | bc)
 echo $id finished within $DIFF

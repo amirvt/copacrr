@@ -44,3 +44,14 @@ def get_qrelf(basepath, year):
     qrelf = os.path.join(basepath, 'qrels.adhoc.6y')
 
     return qrelf
+
+def get_rerank_file(basepath, year):
+    # if year.startswith("nwt") or year.startswith("wt"):
+    #     qrelf = os.path.join(basepath, 'qrels.adhoc.6y')
+    # else:
+    #     print("WARNING: no qrelf exists for get_train_qids on year: %s" % year)
+    #     qrelf = None
+
+    qrelf = os.path.join(basepath, 'res.txt')
+
+    return qrelf

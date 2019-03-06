@@ -57,7 +57,7 @@ rawdoc_mat_dir/query_idf/desc_term_idf/1
 rawdoc_mat_dir/query_idf/topic_term_idf/1
 '''
 # the directory helds the similarity matrices 
-sim_dir="/media/amir/6B254F8510DE287D/Amir/data"
+sim_dir="/home/vandermonde/Documents/git/copacrr/data"
 rawdoc_mat_dir=os.path.join(sim_dir, 'cosine')
 #"/directory to the pre-computed similarity matrices/"
 # the mat for the context needs to be pre-computed if context=True
@@ -66,7 +66,7 @@ if contextdir is None:
     contextdir = "%s/context" % rawdoc_mat_dir
 
 # following filename is used in evals/*.py
-# all runs from trec for the rerank-simple and rerank-all benchmarks 
+# all runs from trec for the rerank-simple and rerank-all benchmarks
 trec_run_basedir=os.path.join(cur_dir, "data", "trec_runs")
 # the evaluation results for all origial runs 
 eval_trec_run_basedir=os.path.join(cur_dir, "data", "eval_trec_runs")
@@ -124,5 +124,5 @@ def default_params():
     if 'debug' in expname:
         epochs = 5
 
-    nomfeat = 1
-    feat_names = 'sim'
+    nomfeat = 2
+    featnames = 'sims*idfs'

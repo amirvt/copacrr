@@ -88,7 +88,12 @@ class MY_Generator(keras.utils.Sequence):
     def get_doc_matrix(self, qid, cwid, doc_mat_dir, feature_names, n_grams, dim_sim, max_query_term, select_pos_func):
         topic_cwid_fs = [doc_mat_dir + '/topic_doc_mat/%s/%d/%s.npy' % (fname, qid, cwid) for fname in feature_names]
 
-        topic_mat = [np.load(topic_cwid_f).astype(np.float32) for topic_cwid_f in topic_cwid_fs]
+        topic_mat = []
+        for topic_cwid_f in topic_cwid_fs:
+            loaded = np.load(topic_cwid_f).astype(np.float32)
+            if ("idfs" in topic_cwid_f):
+                loaded = loaded / 13.17
+            topic_mat.append(loaded)
         for i in range(len(topic_mat)):
             if len(topic_mat[i].shape) == 1:
                 topic_mat[i] = np.expand_dims(topic_mat[i], axis=0)[:, :-1]

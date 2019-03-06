@@ -11,7 +11,7 @@ expname=pacrrpub
 numneg=6
 batch=32
 winlen=3
-kmaxpool=3 
+kmaxpool=3
 binmat=False
 context=False
 combine=16
@@ -37,8 +37,8 @@ python3 -m pred_per_epoch with\
 	parentdir="$parentdir" \
 	epochs=$iterations \
 	outdir="$outdir"\
-	nomfeat=1 \
-	featnames='sims' \
+	nomfeat=2 \
+	featnames='sims*idfs' \
 	nfilter=$nfilter
 
 END=$(date +%s.%N)

@@ -11,7 +11,7 @@ from utils.ngram_nfilter import get_ngram_nfilter
 class PACRR(MODEL_BASE):
     
     params = MODEL_BASE.common_params + ['distill', 'winlen', 'nfilter', 'kmaxpool', 'combine',
-                                         'qproximity', 'context', 'shuffle', 'xfilters', 'cascade', 'nomfeat']
+                                         'qproximity', 'context', 'shuffle', 'xfilters', 'cascade', 'nomfeat', 'featnames']
 
     def __init__(self, *args, **kwargs):
         super(PACRR, self).__init__(*args, **kwargs)
@@ -105,27 +105,28 @@ class PACRR(MODEL_BASE):
                 for n_x, n_y in ng_fsizes[ng]:
                     dim_name = self._get_dim_name(n_x, n_y)
 
-                    if n_x == 1 and n_y == 1:
-                        doc_cov = doc_inputs[input_ng]
-                        re_doc_cov = doc_cov
-                    else:
-                        doc_cov = cov_sim_layers[dim_name](re_input(doc_inputs[input_ng]))
-                        re_doc_cov = re_lq_ds[dim_name](pool_filter_layer[dim_name](Permute((1, 3, 2))(doc_cov)))
+                    # if n_x == 1 and n_y == 1:
+                    #     doc_cov = doc_inputs[input_ng]
+                    #     re_doc_cov = doc_cov
+                    # else:
+                    doc_cov = cov_sim_layers[dim_name](re_input(doc_inputs[input_ng]))
+                    re_doc_cov = re_lq_ds[dim_name](pool_filter_layer[dim_name](Permute((1, 3, 2))(doc_cov)))
                     self.vis_out['conv%s' % ng] = doc_cov
 
                     if p['context']:
                         ng_signal = pool_sdim_layer_context[dim_name]([re_doc_cov, doc_inputs['context']])
                     else:
-                        if dim_name == '1x1':
-
-
-                            features = single_feature(re_doc_cov)
-                            for i in range(p['nomfeat']):
-                                ng_signal = pool_sdim_layer[dim_name](features)
-                                doc_qts_scores.append(ng_signal)
-                        else:
-                            ng_signal = pool_sdim_layer[dim_name](re_doc_cov)
-                            doc_qts_scores.append(ng_signal)
+                        # if dim_name == '1x1':
+                        #
+                        #     print("re_doc_cov shape:", re_doc_cov.shape)
+                        #     features = single_feature(re_doc_cov)
+                        #
+                        #     for i in range(p['nomfeat']):
+                        #         ng_signal = pool_sdim_layer[dim_name](features[i])
+                        #         doc_qts_scores.append(ng_signal)
+                        # else:
+                        ng_signal = pool_sdim_layer[dim_name](re_doc_cov)
+                        doc_qts_scores.append(ng_signal)
                     
 
 

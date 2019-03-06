@@ -77,7 +77,13 @@ def _load_doc_mat_desc(qids, qid_cwid_label, doc_mat_dir, qid_topic_idf, qid_des
                 if h5 is None:
                     # topic_mat = np.load(topic_cwid_f)
                     # topic_mat = [np.genfromtxt(topic_cwid_f, delimiter=',')[:, :-1] for topic_cwid_f in topic_cwid_fs]
-                    topic_mat = [np.load(topic_cwid_f).astype(np.float32) for topic_cwid_f in topic_cwid_fs]
+
+                    topic_mat = []
+                    for topic_cwid_f in topic_cwid_fs:
+                        loaded = np.load(topic_cwid_f).astype(np.float32)
+                        if "idfs" in topic_cwid_f:
+                            loaded = loaded / 13.17
+                        topic_mat.append(loaded)
 
                     for i in range(len(topic_mat)):
                         if len(topic_mat[i].shape) == 1:
@@ -253,7 +259,7 @@ def load_query_idf(qids, doc_mat_dir):
     qid_topic_idf = dict()
     qid_desc_idf = dict()
     for qid in qids:
-        if not os.path.isfile(idfdir_topic + '/%d' % qid) or not os.path.isfile(idfdir_desc + '/%d' % qid):
+        if not os.path.isfile(idfdir_topic + '/%d' % qid): #or not os.path.isfile(idfdir_desc + '/%d' % qid):
             logger.error('%d in %s or %s not exist' % (qid, idfdir_topic, idfdir_desc))
             continue
         # qid_topic_idf[qid] = np.load(idfdir_topic + '/%d'%qid)
@@ -614,7 +620,7 @@ def dump_modelplot(model, model_file):
 
 def pred_label(model, input_x, input_cwid, input_qid):
     batch_size = min(len(input_cwid), 256)
-    preds = model.predict(input_x, batch_size=batch_size, verbose=0).ravel()
+    preds = model.predict(input_x, batch_size=batch_size, verbose=1).ravel()
     qid_cwid_pred = dict()
     for qid, cwid, pred in zip(input_qid, input_cwid, preds.tolist()):
         if qid not in qid_cwid_pred:
@@ -630,7 +636,7 @@ def load_test_data(qids, rawdoc_mat_dir, qid_cwid_label, N_GRAMS, param_val):
     MAX_QUERY_LENGTH = param_val['maxqlen']
     binarysimm = param_val['binmat']
     CONTEXT = param_val['context']
-    feat_names = param_val['feat_names'].split("_")
+    feat_names = param_val['featnames'].split("*")
     if POS_METHOD == 'firstk':
         mat_ngrams = [max(N_GRAMS)]
     else:
@@ -701,7 +707,7 @@ def load_train_data_generator(qids, rawdoc_mat_dir, qid_cwid_label, N_GRAMS, par
     CONTEXT = param_val['context']
     n_batch = param_val['batch']
     rnd_seed = param_val['seed']
-    feat_names = param_val['feat_names'].split("_")
+    feat_names = param_val['featnames'].split("*")
     if POS_METHOD == 'firstk':
         mat_ngrams = [max(N_GRAMS)]
     else:

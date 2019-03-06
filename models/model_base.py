@@ -11,7 +11,7 @@ from utils.config import file2name, name2file
 
 _boolstr = lambda x: x.lower() == 'true'
 _nonestr = lambda x: None if x == 'None' else x
-param_types = {'distill': str, 'xfilters': str, 'cascade': str,
+param_types = {'distill': str,'featnames': str, 'xfilters': str, 'cascade': str,
                'context': _boolstr, 'binmat': _boolstr, 'shuffle': _boolstr,
                'ut': _boolstr, 'ud': _boolstr, 'enhance': _nonestr}
 
@@ -59,6 +59,7 @@ class MODEL_BASE:
         modelname = fields[0]
         params = fields[1:]
 
+
         out = {'modelfn': name2file[modelname]}
         for pstr in params:
             k, v = pstr.split("-")
@@ -66,6 +67,7 @@ class MODEL_BASE:
                 continue
             assert k in self.params, "invalid key '%s' encountered in string: %s" % (k, s)
             assert k not in out, "duplicate key '%s' in string: %s" % (k, s)
+            print("checking param", k , v)
             out[k] = param_types.get(k, int)(v)
 
         # assume ut/ud true if missing (hack to prevent previous expnames from changing)

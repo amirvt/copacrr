@@ -1,5 +1,5 @@
 import sys, time, os, importlib
-from utils.year_2_qids import get_train_qids, get_qrelf
+from utils.year_2_qids import get_train_qids, get_qrelf, get_rerank_file
 from utils.common_utils import read_qrel, SoftFailure
 from utils.ngram_nfilter import get_ngram_nfilter
 import utils.select_doc_pos
@@ -129,10 +129,18 @@ def pred(_log, _config):
 
     # prepare train data
     qids_all = get_train_qids(p['test_year'])
+    print("qids are: ", qids_all)
     qrelf = get_qrelf(qrelfdir, p['test_year'])
     epoch_err_ndcg_loss_list = list()
-    for qids in qids_all:
-        qids = [qids]
+    while len(qids_all) > 0:
+        if len(qids_all) > 13:
+            qids = qids_all[:13]
+            qids_all = qids_all[13:]
+        else:
+            qids = qids_all
+            qids_all =  []
+
+
         qid_cwid_label = read_qrel(qrelf, qids, include_spam=False)
         test_qids =[qid for qid in qids if qid in qid_cwid_label]
         _log.info('%s test_num %d '%(p['test_year'], len(test_qids)))
@@ -193,13 +201,14 @@ def pred(_log, _config):
             epoch_err_ndcg_loss.append((nb_epoch, err20, ndcg20, mapv, loss))
             print_run(qid_cwid_pred, outdir_run, out_name, expid)
             _log.info('finished {0}'.format(f))
+            print("result for {0}".format(f), expid, ndcg20, err20, mapv)
 
         _log.info('finish {0} {1} {2}'.format(expid, p['train_years'], p['test_year']))
         epoch_err_ndcg_loss_list.append(epoch_err_ndcg_loss)
 
 
-        if max(f_epochs) < p['epochs'] - 3:
-            raise SoftFailure("prediction finished, but not all epochs are available yet. last epoch found: %s" % max(f_epochs))
+        # if max(f_epochs) < p['epochs'] - 3:
+        #     raise SoftFailure("prediction finished, but not all epochs are available yet. last epoch found: %s" % max(f_epochs))
 
     epoch_err_ndcg_loss_final = np.array(epoch_err_ndcg_loss_list).sum(0).tolist()
     plot_curve(epoch_err_ndcg_loss_final, outdir_plot, expid, p)
