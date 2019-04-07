@@ -181,7 +181,11 @@ def pred(_log, _config):
         def model_pred(NGRAM_NFILTER, weight_file, test_data, test_docids, test_qids):
             dump_modelplot(model.build(), detail_outdir + 'predplot_' + expid)
             model_predict = model.build_from_dump(weight_file)
-            print(model_predict.weights)
+            for layer in model.layers:
+                g = layer.get_config()
+                h = layer.get_weights()
+                print(g)
+                print(h)
             exit(0)
             qid_cwid_pred = pred_label(model_predict, test_data, test_docids, test_qids)
             return qid_cwid_pred
