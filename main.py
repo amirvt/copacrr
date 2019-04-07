@@ -63,11 +63,11 @@ for train_years, (valid_year, test_year) in train_test_years.items():
     print('trains_years=', train_years)
     print('*******************************************')
     #
-    process = subprocess.Popen(['bash', './bin/train_model_mine.sh'], env=dict(os.environ, train_years=train_years))
+    process = subprocess.Popen(['bash', './bin/print_weights.sh'], env=dict(os.environ, train_years=train_years))
     process.wait()
-
-    process = subprocess.Popen(['bash', './bin/train_model.sh'], env=dict(os.environ, train_years=train_years))
-    process.wait()
+    #
+    # process = subprocess.Popen(['bash', './bin/train_model.sh'], env=dict(os.environ, train_years=train_years))
+    # process.wait()
     #
     # print('*******************************************')
 # train_years = "fold01_04_05"
